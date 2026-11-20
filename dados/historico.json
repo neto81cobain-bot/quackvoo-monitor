@@ -127,38 +127,38 @@
     "t": "2026-11-20",
     "melhor": 2492,
     "dia": "2027-05-29"
+   },
+   {
+    "t": "2026-11-20",
+    "melhor": 1172,
+    "dia": "2027-06-06"
    }
   ],
   "recorde": {
-   "preco": 2492,
-   "dia": "2027-05-29",
+   "preco": 1172,
+   "dia": "2027-06-06",
    "visto": "2026-11-20"
   },
-  "avisou_alvo": false,
+  "avisou_alvo": true,
   "conexao": {
    "hub": "GRU",
-   "dia": "2027-05-30",
-   "total": 2973,
+   "dia": "2027-06-12",
+   "total": 1251,
    "ida": {
-    "direto": {
-     "preco": 1172,
-     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTMwagcIARIDTUFPcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
-    }
-   },
-   "volta": {
-    "total": 1801,
+    "total": 1251,
     "p1": {
-     "preco": 1181,
-     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA2LTA3agcIARIDVlZJcgcIARIDR1JVQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+     "preco": 640,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA2LTEyagcIARIDTUFPcgcIARIDR1JVQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
     },
     "p2": {
-     "preco": 620,
-     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA2LTA4agcIARIDR1JVcgcIARIDTUFPQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+     "preco": 611,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA2LTEyagcIARIDR1JVcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
     },
-    "data2": "2027-06-08"
+    "data2": "2027-06-12"
    },
-   "economia": -481,
-   "vs_mesmo_dia": 2492,
+   "volta": null,
+   "economia": -79,
+   "vs_mesmo_dia": 1485,
    "testado_em": "2026-11-20"
   }
  }
