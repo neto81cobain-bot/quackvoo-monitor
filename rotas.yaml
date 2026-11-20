@@ -1,36 +1,25 @@
-# ============================================================
-# QuackVoo Monitor 🦆 ✈️ — edite só este arquivo
-# ============================================================
-# Datas no formato AAAA-MM-DD. Códigos de aeroporto (IATA):
-# MAO Manaus · STM Santarém · GRU Guarulhos · VCP Viracopos
-# BSB Brasília · VVI Santa Cruz de la Sierra
-
-rotas:
-  - nome: Manaus -> Santa Cruz de la Sierra (Inverno/Neve)
-    origem: MAO
-    destino: VVI
-    ida_entre: [2027-05-25, 2027-09-05]
-    noites: 0
-    adultos: 1
-    preco_alvo: 99999
-    queda_minima: 5
-    conexoes: [GRU, VCP, BSB]
-    conexao_dias: [0, 1]
-
-  - nome: Santarém -> Santa Cruz de la Sierra (Inverno/Neve)
-    origem: STM
-    destino: VVI
-    ida_entre: [2027-05-25, 2027-09-05]
-    noites: 0
-    adultos: 1
-    preco_alvo: 99999
-    queda_minima: 5
-    conexoes: [MAO, BSB, GRU]
-    conexao_dias: [0, 1]
-
 avisos:
-  email: false
-  whatsapp: true
+  economia_minima_conexao: 150
   resumo_semanal: domingo
   conexoes_toda: segunda
-  economia_minima_conexao: 200
+  email: false
+  whatsapp: true
+rotas:
+  - nome: Manaus -> Santa Cruz (Inverno)
+    origem: MAO
+    destino: VVI
+    ida_entre:
+      - '2027-05-25'
+      - '2027-09-05'
+    noites: 0
+    adultos: 1
+    preco_alvo: 2400
+    queda_minima: 5
+    conexoes:
+      - GRU
+      - VCP
+      - BSB
+      - CGB
+    conexao_dias:
+      - 0
+      - 1
