@@ -1,1 +1,52 @@
-{}
+{
+ "Manaus → Santa Cruz de la Sierra": {
+  "execucoes": [
+   {
+    "t": "2026-11-20",
+    "melhor": 2492,
+    "dia": "2027-01-17"
+   }
+  ],
+  "recorde": {
+   "preco": 2492,
+   "dia": "2027-01-17",
+   "visto": "2026-11-20"
+  },
+  "avisou_alvo": false,
+  "conexao": {
+   "hub": "duas só ida",
+   "dia": "2027-01-19",
+   "total": 2883,
+   "ida": {
+    "direto": {
+     "preco": 1172,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTAxLTE5agcIARIDTUFPcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    }
+   },
+   "volta": {
+    "direto": {
+     "preco": 1711,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTAxLTI2agcIARIDVlZJcgcIARIDTUFPQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    }
+   },
+   "economia": -391,
+   "vs_mesmo_dia": 2492,
+   "testado_em": "2026-11-20"
+  }
+ },
+ "Santarém → Belém": {
+  "execucoes": [
+   {
+    "t": "2026-11-20",
+    "melhor": 586,
+    "dia": "2027-01-19"
+   }
+  ],
+  "recorde": {
+   "preco": 586,
+   "dia": "2027-01-19",
+   "visto": "2026-11-20"
+  },
+  "avisou_alvo": false
+ }
+}
