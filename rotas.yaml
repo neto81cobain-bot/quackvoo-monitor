@@ -1,35 +1,36 @@
 # ============================================================
-#  QuackVoo Monitor 🦆✈️  —  edite só este arquivo
+# QuackVoo Monitor 🦆 ✈️ — edite só este arquivo
 # ============================================================
 # Datas no formato AAAA-MM-DD. Códigos de aeroporto (IATA):
-#   MAO Manaus · STM Santarém · TMT Trombetas · BEL Belém
-#   GRU/CGH/VCP São Paulo · BSB Brasília · VVI Santa Cruz de la Sierra
+# MAO Manaus · STM Santarém · GRU Guarulhos · VCP Viracopos
+# BSB Brasília · VVI Santa Cruz de la Sierra
 
 rotas:
-  - nome: Manaus → Santa Cruz de la Sierra
+  - nome: Manaus -> Santa Cruz de la Sierra (Inverno/Neve)
     origem: MAO
     destino: VVI
-    ida_entre: [2027-01-10, 2027-03-31]   # janela de datas de ida que te servem
-    noites: 7                 # tire esta linha (ou ponha 0) para só ida
+    ida_entre: [2027-05-25, 2027-09-05]
+    noites: 0
     adultos: 1
-    preco_alvo: 1800          # avisa quando ficar abaixo (total, todos os passageiros)
-    queda_minima: 5           # avisa quando cair pelo menos X% desde a última vez
-    # aeroportos para testar conexão por conta própria (2 passagens separadas):
-    conexoes: [GRU, VCP, BSB, CGB, LIM]
-    conexao_dias: [0, 1]      # 0 = mesmo dia, 1 = dorme lá e segue no dia seguinte
-
-  - nome: Santarém → Belém
-    origem: STM
-    destino: BEL
-    ida_entre: [2026-12-15, 2027-01-31]
-    adultos: 1
-    preco_alvo: 450
+    preco_alvo: 99999
     queda_minima: 5
-    conexoes: []
+    conexoes: [GRU, VCP, BSB]
+    conexao_dias: [0, 1]
+
+  - nome: Santarém -> Santa Cruz de la Sierra (Inverno/Neve)
+    origem: STM
+    destino: VVI
+    ida_entre: [2027-05-25, 2027-09-05]
+    noites: 0
+    adultos: 1
+    preco_alvo: 99999
+    queda_minima: 5
+    conexoes: [MAO, BSB, GRU]
+    conexao_dias: [0, 1]
 
 avisos:
-  email: true                 # precisa dos segredos EMAIL_* no GitHub
-  whatsapp: true              # precisa dos segredos WHATSAPP_* (CallMeBot)
-  resumo_semanal: domingo     # manda um resumo mesmo sem queda (ou "nunca")
-  conexoes_toda: segunda      # dia da semana em que testa as conexões (economiza crédito)
-  economia_minima_conexao: 150  # só sugere conexão se economizar pelo menos R$ X
+  email: false
+  whatsapp: true
+  resumo_semanal: domingo
+  conexoes_toda: segunda
+  economia_minima_conexao: 200
