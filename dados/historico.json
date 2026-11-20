@@ -120,5 +120,46 @@
    "vs_mesmo_dia": 5160,
    "testado_em": "2026-11-20"
   }
+ },
+ "Manaus -> Santa Cruz (Inverno)": {
+  "execucoes": [
+   {
+    "t": "2026-11-20",
+    "melhor": 2492,
+    "dia": "2027-05-29"
+   }
+  ],
+  "recorde": {
+   "preco": 2492,
+   "dia": "2027-05-29",
+   "visto": "2026-11-20"
+  },
+  "avisou_alvo": false,
+  "conexao": {
+   "hub": "GRU",
+   "dia": "2027-05-30",
+   "total": 2973,
+   "ida": {
+    "direto": {
+     "preco": 1172,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTMwagcIARIDTUFPcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    }
+   },
+   "volta": {
+    "total": 1801,
+    "p1": {
+     "preco": 1181,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA2LTA3agcIARIDVlZJcgcIARIDR1JVQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    },
+    "p2": {
+     "preco": 620,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA2LTA4agcIARIDR1JVcgcIARIDTUFPQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    },
+    "data2": "2027-06-08"
+   },
+   "economia": -481,
+   "vs_mesmo_dia": 2492,
+   "testado_em": "2026-11-20"
+  }
  }
 }
