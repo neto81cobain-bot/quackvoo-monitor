@@ -259,7 +259,7 @@ def main():
         else:
             print(f"⚠️  {r['nome']}: {'; '.join(res['erros'])}")
         for e in res.get("erros", []):
-            if "melhor" in res: print("   ⚠️", e)
+            if "melhor" in res: print("  ⚠️", e)
         if motivos:
             avisar.append((res, motivos))
 
@@ -281,7 +281,7 @@ def main():
         try: print(avisos.email(assunto, html, texto))
         except Exception as e: print("e-mail falhou:", e)
     if CFG_AV.get("whatsapp", True):
-        try: print(avisos.whatsapp(assunto + "\n\n" + texto))
+        try: print(avisos.whatsapp(montar_telegram(avisar))
         except Exception as e: print("whatsapp falhou:", e)
 
 
