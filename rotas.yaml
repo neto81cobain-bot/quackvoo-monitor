@@ -9,9 +9,9 @@ rotas:
     origem: MAO
     destino: VVI
     ida_entre:
-      - '2027-05-25'
-      - '2027-09-05'
-    noites: 8
+      - '2027-06-01'
+      - '2027-09-13'
+    noites: 0
     adultos: 1
     preco_alvo: 2400
     queda_minima: 5
