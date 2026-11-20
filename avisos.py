@@ -1,58 +1,84 @@
-def montar_telegram(res_avisar: list[tuple[dict, list[str]]]) -> str:
-    linhas = [
-        "<b>Quack! 🦆</b>",
-        f"<i>Relatório de {hoje.strftime('%d/%m/%Y')} · preços do Google Voos (totais, com taxas)</i>",
-        "",
-    ]
-    for r, motivos in res_avisar:
-        if "melhor" not in r:
-            linhas.append(f"⚠️ <b>{r['nome']}</b>: {'; '.join(r['erros'])}")
-            linhas.append("")
+import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from urllib import parse, request
+
+MAX_TELEGRAM_CHARS = 4096
+
+
+def _dividir_mensagem(texto: str, limite: int = MAX_TELEGRAM_CHARS) -> list[str]:
+    if len(texto) <= limite:
+        return [texto]
+
+    partes: list[str] = []
+    atual = ""
+    for linha in texto.splitlines(keepends=True):
+        if len(linha) > limite:
+            if atual:
+                partes.append(atual.rstrip("\n"))
+                atual = ""
+            for i in range(0, len(linha), limite):
+                partes.append(linha[i : i + limite])
             continue
 
-        m, per = r["melhor"], r.get("periodo")
-        tipo = f"ida e volta, {r['noites']} noites" if r["noites"] else "só ida"
-        sem = sorted(r.get("semana", []), key=lambda x: x[1])
-        c = r.get("conexao")
+        if len(atual) + len(linha) > limite:
+            partes.append(atual.rstrip("\n"))
+            atual = linha
+        else:
+            atual += linha
 
-        linhas.append(f"✈️ <b>{r['nome']}</b> · <i>{tipo} · {r['adultos']} adulto(s)</i>")
-        if motivos:
-            linhas.extend(motivos)
-        linhas.append("")
-        linhas.append(f"<b>{A.reais(m['preco'])}</b>")
-        linhas.append(f"saindo <b>{A.br(m['dia'])}</b> · <a href=\"{m['url']}\">abrir no Google Voos</a>")
+    if atual.strip():
+        partes.append(atual.rstrip("\n"))
+    return partes
 
-        if per:
-            linhas.append(f"📅 Melhor semana: <b>{A.br(per['inicio'])} a {A.br(per['fim'])}</b> (média {A.reais(per['media'])})")
-        if sem:
-            linhas.append(f"📆 Dia da semana mais barato pra sair: <b>{sem[0][0]}</b>; mais caro: {sem[-1][0]}")
 
-        top = sorted(r["calendario"].items(), key=lambda kv: kv[1]["preco"])[:5]
-        if top:
-            linhas.append("")
-            linhas.append("<b>Os 5 dias mais baratos</b>")
-            for idx, (k, v) in enumerate(top, 1):
-                linhas.append(f"{idx}. <a href=\"{v['url']}\">{A.br(k)}</a> — <b>{A.reais(v['preco'])}</b>")
+def telegram(mensagem: str) -> str:
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        raise RuntimeError("Faltam os segredos TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID.")
 
-        if r.get("meses"):
-            linhas.append("")
-            linhas.append("<pre>")
-            linhas.append(f"{'Mês':<7} {'Menor':>9} {'Dia':<10} {'Média':>9}")
-            for x in r["meses"]:
-                linhas.append(f"{str(x['mes'])[:7]:<7} {A.reais(x['menor']):>9} {A.br(x['dia'])[:10]:<10} {A.reais(x['media']):>9}")
-            linhas.append("</pre>")
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    partes = _dividir_mensagem(mensagem)
 
-        if c and c.get("economia", 0) > 0:
-            linhas.append("")
-            linhas.append("🔀 <b>Conexão por conta própria</b>")
-            linhas.extend(texto_conexao(c, r["origem"], r["destino"], r["noites"]))
-            linhas.append(f"<b>Economia: {A.reais(c['economia'])}</b>")
-            linhas.extend(c.get("horarios", []))
-            linhas.append("<i>São passagens separadas: se o 1º voo atrasar, a cia do 2º não te protege, e a mala precisa ser despachada de novo. Deixe 4h+ de folga ou durma na conexão.</i>")
+    for idx, parte in enumerate(partes, 1):
+        payload = parse.urlencode(
+            {
+                "chat_id": chat_id,
+                "text": parte,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": "true",
+            }
+        ).encode("utf-8")
+        req = request.Request(url, data=payload, method="POST")
+        with request.urlopen(req, timeout=20) as resp:
+            if resp.status != 200:
+                raise RuntimeError(f"Telegram retornou HTTP {resp.status} na parte {idx}/{len(partes)}.")
 
-        linhas.append("")
-        linhas.append("────────────────────────")
-        linhas.append("")
+    return f"Telegram enviado com sucesso ({len(partes)} parte(s))."
 
-    linhas.append("<i>Preços mudam a toda hora: confira antes de pagar. Gerado pelo QuackVoo Monitor.</i>")
-    return "\n".join(linhas).strip()
+
+def whatsapp(mensagem: str) -> str:
+    return telegram(mensagem)
+
+
+def email(assunto: str, html: str, texto: str) -> str:
+    usuario = os.getenv("EMAIL_USER", "").strip()
+    senha = os.getenv("EMAIL_APP_PASSWORD", "").strip()
+    destino = os.getenv("EMAIL_TO", "").strip()
+    if not usuario or not senha or not destino:
+        return "E-mail ignorado (segredos EMAIL_USER/EMAIL_APP_PASSWORD/EMAIL_TO não configurados)."
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = assunto
+    msg["From"] = usuario
+    msg["To"] = destino
+    msg.attach(MIMEText(texto, "plain", "utf-8"))
+    msg.attach(MIMEText(html, "html", "utf-8"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=20) as smtp:
+        smtp.login(usuario, senha)
+        smtp.sendmail(usuario, [destino], msg.as_string())
+
+    return f"E-mail enviado para {destino}."
