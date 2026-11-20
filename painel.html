@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuackVoo Painel</title>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --surface: #131b31;
+      --surface-2: #1a2440;
+      --border: #28365c;
+      --text: #eef2ff;
+      --muted: #9aa7c7;
+      --accent: #38bdf8;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: linear-gradient(180deg, #090d1a 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.45;
+      padding-bottom: 112px;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 16px; }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    header h1 { margin: 0; font-size: 1.35rem; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 0.88rem; }
+
+    .badge {
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .card-title { margin: 0; font-size: 1.05rem; font-weight: 700; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 12px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+    textarea {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      min-height: 220px;
+      resize: vertical;
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+    .chip-btn {
+      background: var(--surface-2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .chip-btn.active {
+      background: rgba(34, 197, 94, 0.16);
+      color: #86efac;
+      border-color: rgba(34, 197, 94, 0.5);
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 11px;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn-primary { background: var(--accent); color: #061224; }
+    .btn-success { background: var(--accent-2); color: #052010; }
+    .btn-ghost { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    .btn-sm { padding: 6px 10px; font-size: 0.8rem; border-radius: 8px; }
+
+    .switch-row { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .check-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent-2);
+    }
+
+    .sticky-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(11, 16, 32, 0.92);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      z-index: 50;
+    }
+
+    .sticky-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-box {
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      display: none;
+    }
+
+    .status-box.show { display: block; }
+    .status-box.ok {
+      border-color: rgba(34, 197, 94, 0.45);
+      background: rgba(34, 197, 94, 0.12);
+      color: #bbf7d0;
+    }
+    .status-box.err {
+      border-color: rgba(239, 68, 68, 0.45);
+      background: rgba(239, 68, 68, 0.12);
+      color: #fecaca;
+    }
+
+    .help { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    details summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>QuackVoo Painel</h1>
+        <p>Edite rotas, conexões, datas, noites e horários direto do celular ou PC</p>
+      </div>
+      <span class="badge" id="repoBadge">Sem conexão GitHub</span>
+    </header>
+
+    <div id="statusBox" class="status-box"></div>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Conexão com o GitHub</h2>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="limparToken()">Limpar token</button>
+      </div>
+      <div class="grid-2">
+        <label>
+          Usuário / Dono do repo
+          <input id="ghOwner" type="text" placeholder="ex.: neto81cobain-bot" />
+        </label>
+        <label>
+          Nome do repositório
+          <input id="ghRepo" type="text" placeholder="ex.: quackvoo-monitor" />
+        </label>
+        <label>
+          Branch
+          <input id="ghBranch" type="text" value="main" />
+        </label>
+        <label>
+          Caminho do rotas.yaml
+          <input id="ghRotasPath" type="text" value="rotas.yaml" />
+        </label>
+        <label>
+          Caminho do workflow (opcional)
+          <input id="ghWorkflowPath" type="text" value=".github/workflows/quackvoo.yml" />
+        </label>
+        <label>
+          Fine-grained Token (apenas este repo)
+          <input id="ghToken" type="password" placeholder="github_pat_..." />
+        </label>
+      </div>
+      <div class="row-actions" style="margin-top: 12px;">
+        <button class="btn btn-primary" type="button" onclick="carregarDoGitHub()">Carregar rotas.yaml do GitHub</button>
+        <button class="btn btn-ghost" type="button" onclick="salvarConexaoLocal()">Salvar dados do repo no aparelho</button>
+      </div>
+      <p class="help">
+        Use um <strong>Fine-grained Personal Access Token</strong> limitado apenas ao repositório do QuackVoo com permissão <em>Contents: Read and write</em>. O token fica salvo apenas no <code>localStorage</code> deste navegador.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Avisos e Agendamento</h2>
+      </div>
+      <div class="grid">
+        <label>
+          Economia mínima conexão (R$)
+          <input id="avEconomia" type="number" min="0" step="10" value="150" />
+        </label>
+        <label>
+          Resumo semanal
+          <select id="avResumoSemanal">
+            <option value="nenhum">nenhum</option>
+            <option value="segunda">segunda</option>
+            <option value="terca">terca</option>
+            <option value="quarta">quarta</option>
+            <option value="quinta">quinta</option>
+            <option value="sexta">sexta</option>
+            <option value="sabado">sabado</option>
+            <option value="domingo">domingo</option>
+          </select>
+        </label>
+        <label>
+          Testar conexões toda
+          <select id="avConexoesToda">
+            <option value="segunda">segunda</option>
+            <option value="terca">terca</option>
+            <option value="quarta">quarta</option>
+            <option value="quinta">quinta</option>
+            <option value="sexta">sexta</option>
+            <option value="sabado">sabado</option>
+            <option value="domingo">domingo</option>
+          </select>
+        </label>
+        <label>
+          Horário manhã (UTC HH:MM)
+          <input id="cronManha" type="text" placeholder="ex.: 10:00" />
+        </label>
+        <label>
+          Horário noite (UTC HH:MM)
+          <input id="cronNoite" type="text" placeholder="ex.: 01:00" />
+        </label>
+      </div>
+      <div class="switch-row">
+        <label class="check-item">
+          <input id="avEmail" type="checkbox" />
+          Enviar por e-mail
+        </label>
+        <label class="check-item">
+          <input id="avWhatsapp" type="checkbox" checked />
+          Enviar por Telegram / WhatsApp
+        </label>
+      </div>
+      <p class="help">
+        Os campos de horário UTC atualizam o <code>cron</code> do workflow quando o arquivo existir no repositório. Se deixar em branco, mantém o cron atual do workflow.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Rotas monitoradas</h2>
+        <button class="btn btn-primary btn-sm" type="button" onclick="adicionarRota()">+ Nova rota</button>
+      </div>
+      <div id="rotasContainer"></div>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary>Ver / editar YAML gerado manualmente</summary>
+        <div style="margin-top: 12px;">
+          <textarea id="yamlPreview" spellcheck="false"></textarea>
+          <div class="row-actions" style="margin-top: 10px;">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="aplicarYamlManual()">Aplicar YAML no formulário</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="copiarYaml()">Copiar YAML</button>
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <div class="sticky-bar">
+    <div class="sticky-inner">
+      <div class="row-actions">
+        <button class="btn btn-ghost" type="button" onclick="atualizarPreviaYaml()">Atualizar YAML</button>
+        <button class="btn btn-ghost" type="button" onclick="baixarYaml()">Baixar rotas.yaml</button>
+      </div>
+      <button class="btn btn-success" type="button" onclick="salvarNoGitHub()">Salvar e commitar no GitHub</button>
+    </div>
+  </div>
+
+  <script>
+    const HUBS_COMUNS = ["GRU", "VCP", "CGH", "BSB", "CGB", "LIM", "BOG", "PTY", "GIG", "CNF", "MAO", "STM", "BEL"];
+    const DIAS_CON = [0, 1, 2, 3];
+    const STORAGE_KEY = "quackvoo_painel_cfg_v1";
+
+    let estado = {
+      avisos: {
+        economia_minima_conexao: 150,
+        resumo_semanal: "domingo",
+        conexoes_toda: "segunda",
+        email: false,
+        whatsapp: true
+      },
+      rotas: [
+        {
+          nome: "Manaus -> Santa Cruz (Inverno)",
+          origem: "MAO",
+          destino: "VVI",
+          ida_entre: ["2027-05-25", "2027-09-05"],
+          noites: 8,
+          adultos: 1,
+          preco_alvo: 2400,
+          queda_minima: 5,
+          conexoes: ["GRU", "VCP", "BSB", "CGB"],
+          conexao_dias: [0, 1]
+        }
+      ],
+      workflowSha: null,
+      workflowContent: "",
+      cronManha: "",
+      cronNoite: "",
+      rotasSha: null
+    };
+
+    function mostrarStatus(msg, tipo = "ok") {
+      const box = document.getElementById("statusBox");
+      box.textContent = msg;
+      box.className = `status-box show ${tipo}`;
+      box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function salvarConexaoLocal() {
+      const dados = {
+        owner: document.getElementById("ghOwner").value.trim(),
+        repo: document.getElementById("ghRepo").value.trim(),
+        branch: document.getElementById("ghBranch").value.trim() || "main",
+        rotasPath: document.getElementById("ghRotasPath").value.trim() || "rotas.yaml",
+        workflowPath: document.getElementById("ghWorkflowPath").value.trim() || ".github/workflows/quackvoo.yml",
+        token: document.getElementById("ghToken").value.trim()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dados));
+      atualizarBadge();
+      mostrarStatus("Configurações de conexão salvas neste navegador.", "ok");
+    }
+
+    function limparToken() {
+      document.getElementById("ghToken").value = "";
+      salvarConexaoLocal();
+      mostrarStatus("Token removido do navegador.", "ok");
+    }
+
+    function atualizarBadge() {
+      const owner = document.getElementById("ghOwner").value.trim();
+      const repo = document.getElementById("ghRepo").value.trim();
+      const hasToken = Boolean(document.getElementById("ghToken").value.trim());
+      const badge = document.getElementById("repoBadge");
+      if (owner && repo) {
+        badge.textContent = `${owner}/${repo}${hasToken ? " · token ok" : " · sem token"}`;
+      } else {
+        badge.textContent = "Sem conexão GitHub";
+      }
+    }
+
+    function carregarConexaoLocal() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const d = JSON.parse(raw);
+        if (d.owner) document.getElementById("ghOwner").value = d.owner;
+        if (d.repo) document.getElementById("ghRepo").value = d.repo;
+        if (d.branch) document.getElementById("ghBranch").value = d.branch;
+        if (d.rotasPath) document.getElementById("ghRotasPath").value = d.rotasPath;
+        if (d.workflowPath) document.getElementById("ghWorkflowPath").value = d.workflowPath;
+        if (d.token) document.getElementById("ghToken").value = d.token;
+        atualizarBadge();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function sincronizarFormularioComEstado() {
+      document.getElementById("avEconomia").value = estado.avisos.economia_minima_conexao ?? 150;
+      document.getElementById("avResumoSemanal").value = estado.avisos.resumo_semanal || "nenhum";
+      document.getElementById("avConexoesToda").value = estado.avisos.conexoes_toda || "segunda";
+      document.getElementById("avEmail").checked = Boolean(estado.avisos.email);
+      document.getElementById("avWhatsapp").checked = estado.avisos.whatsapp !== false;
+      document.getElementById("cronManha").value = estado.cronManha || "";
+      document.getElementById("cronNoite").value = estado.cronNoite || "";
+      renderRotas();
+      atualizarPreviaYaml();
+    }
+
+    function lerFormularioParaEstado() {
+      estado.avisos = {
+        economia_minima_conexao: Number(document.getElementById("avEconomia").value || 0),
+        resumo_semanal: document.getElementById("avResumoSemanal").value,
+        conexoes_toda: document.getElementById("avConexoesToda").value,
+        email: document.getElementById("avEmail").checked,
+        whatsapp: document.getElementById("avWhatsapp").checked
+      };
+      estado.cronManha = document.getElementById("cronManha").value.trim();
+      estado.cronNoite = document.getElementById("cronNoite").value.trim();
+    }
+
+    function adicionarRota() {
+      lerFormularioParaEstado();
+      estado.rotas.push({
+        nome: `Nova Rota ${estado.rotas.length + 1}`,
+        origem: "STM",
+        destino: "VVI",
+        ida_entre: ["2027-05-25", "2027-09-05"],
+        noites: 8,
+        adultos: 1,
+        preco_alvo: 2500,
+        queda_minima: 5,
+        conexoes: ["GRU", "BSB"],
+        conexao_dias: [0, 1]
+      });
+      renderRotas();
+      atualizarPreviaYaml();
+    }
+
+    function removerRota(idx) {
+      lerFormularioParaEstado();
+      estado.rotas.splice(idx, 1);
+      renderRotas();
+      atualizarPreviaYaml();
+    }
+
+    function toggleHub(rotaIdx, hub) {
+      lerFormularioParaEstado();
+      const r = estado.rotas[rotaIdx];
+      r.conexoes = Array.isArray(r.conexoes) ? [...r.conexoes] : [];
+      const i = r.conexoes.indexOf(hub);
+      if (i >= 0) r.conexoes.splice(i, 1);
+      else r.conexoes.push(hub);
+      renderRotas();
+      atualizarPreviaYaml();
+    }
+
+    function toggleDiaCon(rotaIdx, dia) {
+      lerFormularioParaEstado();
+      const r = estado.rotas[rotaIdx];
+      r.conexao_dias = Array.isArray(r.conexao_dias) ? [...r.conexao_dias] : [];
+      const i = r.conexao_dias.indexOf(dia);
+      if (i >= 0) r.conexao_dias.splice(i, 1);
+      else r.conexao_dias.push(dia);
+      r.conexao_dias.sort((a, b) => a - b);
+      renderRotas();
+      atualizarPreviaYaml();
+    }
+
+    function renderRotas() {
+      const container = document.getElementById("rotasContainer");
+      container.innerHTML = "";
+
+      estado.rotas.forEach((r, idx) => {
+        const ini = Array.isArray(r.ida_entre) && r.ida_entre[0] ? String(r.ida_entre[0]).slice(0, 10) : "2027-05-25";
+        const fim = Array.isArray(r.ida_entre) && r.ida_entre[1] ? String(r.ida_entre[1]).slice(0, 10) : "2027-09-05";
+        const hubsAtuais = Array.isArray(r.conexoes) ? r.conexoes : [];
+        const diasAtuais = Array.isArray(r.conexao_dias) ? r.conexao_dias : [0, 1];
+
+        const div = document.createElement("div");
+        div.className = "card";
+        div.style.background = "var(--surface-2)";
+        div.innerHTML = `
+          <div class="card-header">
+            <h3 class="card-title">Rota #${idx + 1}: ${escapeHtml(r.nome || "Sem nome")}</h3>
+            <button class="btn btn-danger btn-sm" type="button" onclick="removerRota(${idx})">Excluir</button>
+          </div>
+          <div class="grid">
+            <label>
+              Nome da rota
+              <input type="text" value="${escapeAttr(r.nome || "")}" oninput="atualizarCampoRota(${idx}, 'nome', this.value)" />
+            </label>
+            <label>
+              Origem (IATA)
+              <input type="text" maxlength="3" style="text-transform:uppercase" value="${escapeAttr(r.origem || "")}" oninput="atualizarCampoRota(${idx}, 'origem', this.value.toUpperCase())" />
+            </label>
+            <label>
+              Destino (IATA)
+              <input type="text" maxlength="3" style="text-transform:uppercase" value="${escapeAttr(r.destino || "")}" oninput="atualizarCampoRota(${idx}, 'destino', this.value.toUpperCase())" />
+            </label>
+            <label>
+              Ida a partir de
+              <input type="date" value="${ini}" onchange="atualizarDataRota(${idx}, 0, this.value)" />
+            </label>
+            <label>
+              Ida até
+              <input type="date" value="${fim}" onchange="atualizarDataRota(${idx}, 1, this.value)" />
+            </label>
+            <label>
+              Noites (0 = só ida)
+              <input type="number" min="0" value="${Number(r.noites || 0)}" oninput="atualizarCampoRota(${idx}, 'noites', Number(this.value || 0))" />
+            </label>
+            <label>
+              Adultos
+              <input type="number" min="1" value="${Number(r.adultos || 1)}" oninput="atualizarCampoRota(${idx}, 'adultos', Number(this.value || 1))" />
+            </label>
+            <label>
+              Preço alvo (R$)
+              <input type="number" min="0" step="50" value="${r.preco_alvo ?? ""}" oninput="atualizarCampoRota(${idx}, 'preco_alvo', this.value ? Number(this.value) : null)" />
+            </label>
+            <label>
+              Queda mínima (%)
+              <input type="number" min="0" max="100" value="${Number(r.queda_minima ?? 5)}" oninput="atualizarCampoRota(${idx}, 'queda_minima', Number(this.value || 0))" />
+            </label>
+          </div>
+
+          <div style="margin-top: 12px;">
+            <div style="font-size: 0.82rem; color: var(--muted);">Aeroportos de conexão (hubs):</div>
+            <div class="chips">
+              ${HUBS_COMUNS.map(h => `
+                <button type="button" class="chip-btn ${hubsAtuais.includes(h) ? "active" : ""}" onclick="toggleHub(${idx}, '${h}')">${h}</button>
+              `).join("")}
+            </div>
+          </div>
+
+          <div style="margin-top: 12px;">
+            <div style="font-size: 0.82rem; color: var(--muted);">Folga de dias na conexão (<code>conexao_dias</code>):</div>
+            <div class="chips">
+              ${DIAS_CON.map(d => `
+                <button type="button" class="chip-btn ${diasAtuais.includes(d) ? "active" : ""}" onclick="toggleDiaCon(${idx}, ${d})">+${d} dia${d === 1 ? "" : "s"}</button>
+              `).join("")}
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function atualizarCampoRota(idx, campo, valor) {
+      estado.rotas[idx][campo] = valor;
+      atualizarPreviaYaml();
+    }
+
+    function atualizarDataRota(idx, pos, valor) {
+      if (!Array.isArray(estado.rotas[idx].ida_entre)) {
+        estado.rotas[idx].ida_entre = ["2027-05-25", "2027-09-05"];
+      }
+      estado.rotas[idx].ida_entre[pos] = valor;
+      atualizarPreviaYaml();
+    }
+
+    function montarObjetoYaml() {
+      lerFormularioParaEstado();
+      const rotasLimpa = estado.rotas.map(r => {
+        const obj = {
+          nome: r.nome || "Rota",
+          origem: (r.origem || "").toUpperCase(),
+          destino: (r.destino || "").toUpperCase(),
+          ida_entre: [
+            String((r.ida_entre && r.ida_entre[0]) || "2027-05-25"),
+            String((r.ida_entre && r.ida_entre[1]) || "2027-09-05")
+          ],
+          noites: Number(r.noites || 0),
+          adultos: Number(r.adultos || 1)
+        };
+        if (r.preco_alvo !== null && r.preco_alvo !== undefined && r.preco_alvo !== "") {
+          obj.preco_alvo = Number(r.preco_alvo);
+        }
+        obj.queda_minima = Number(r.queda_minima ?? 5);
+        if (Array.isArray(r.conexoes) && r.conexoes.length) {
+          obj.conexoes = r.conexoes;
+        }
+        if (Array.isArray(r.conexao_dias) && r.conexao_dias.length) {
+          obj.conexao_dias = r.conexao_dias;
+        }
+        return obj;
+      });
+
+      return {
+        avisos: {
+          economia_minima_conexao: Number(estado.avisos.economia_minima_conexao || 0),
+          resumo_semanal: estado.avisos.resumo_semanal || "nenhum",
+          conexoes_toda: estado.avisos.conexoes_toda || "segunda",
+          email: Boolean(estado.avisos.email),
+          whatsapp: Boolean(estado.avisos.whatsapp)
+        },
+        rotas: rotasLimpa
+      };
+    }
+
+    function atualizarPreviaYaml() {
+      const obj = montarObjetoYaml();
+      document.getElementById("yamlPreview").value = jsyaml.dump(obj, { lineWidth: -1, noRefs: true });
+    }
+
+    function aplicarYamlManual() {
+      try {
+        const parsed = jsyaml.load(document.getElementById("yamlPreview").value);
+        if (!parsed || !Array.isArray(parsed.rotas)) {
+          throw new Error("YAML precisa conter a chave 'rotas'.");
+        }
+        estado.avisos = { ...estado.avisos, ...(parsed.avisos || {}) };
+        estado.rotas = parsed.rotas;
+        sincronizarFormularioComEstado();
+        mostrarStatus("YAML aplicado ao formulário com sucesso.", "ok");
+      } catch (e) {
+        mostrarStatus("Erro ao ler YAML: " + e.message, "err");
+      }
+    }
+
+    function copiarYaml() {
+      atualizarPreviaYaml();
+      const txt = document.getElementById("yamlPreview").value;
+      navigator.clipboard?.writeText(txt).then(() => {
+        mostrarStatus("YAML copiado para a área de transferência.", "ok");
+      }).catch(() => {
+        mostrarStatus("Não foi possível copiar automaticamente.", "err");
+      });
+    }
+
+    function baixarYaml() {
+      atualizarPreviaYaml();
+      const blob = new Blob([document.getElementById("yamlPreview").value], { type: "text/yaml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "rotas.yaml";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function utf8ToBase64(str) {
+      const bytes = new TextEncoder().encode(str);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return btoa(bin);
+    }
+
+    function base64ToUtf8(b64) {
+      const bin = atob(b64.replace(/\n/g, ""));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    }
+
+    async function buscarArquivoGitHub(owner, repo, path, branch, token) {
+      const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}?ref=${encodeURIComponent(branch)}`;
+      const headers = { Accept: "application/vnd.github+json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`GitHub (${res.status}): ${txt.slice(0, 140)}`);
+      }
+      return res.json();
+    }
+
+    async function enviarArquivoGitHub(owner, repo, path, branch, token, content, message, sha = null) {
+      const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}`;
+      const body = {
+        message,
+        content: utf8ToBase64(content),
+        branch
+      };
+      if (sha) body.sha = sha;
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Falha ao salvar ${path} (${res.status}): ${txt.slice(0, 160)}`);
+      }
+      return res.json();
+    }
+
+    function extrairCrons(ymlText) {
+      const matches = [...ymlText.matchAll(/cron:\s*['"](\d+)\s+(\d+)\s+\*\s+\*\s+\*['"]/g)];
+      const fmt = m => `${String(Number(m[2])).padStart(2, "0")}:${String(Number(m[1])).padStart(2, "0")}`;
+      return {
+        manha: matches[0] ? fmt(matches[0]) : "",
+        noite: matches[1] ? fmt(matches[1]) : ""
+      };
+    }
+
+    function aplicarCronsNoWorkflow(ymlText, horaManha, horaNoite) {
+      let updated = ymlText;
+      const toCron = hhmm => {
+        const parts = hhmm.split(":");
+        if (parts.length !== 2) return null;
+        const h = Number(parts[0]);
+        const min = Number(parts[1]);
+        if (Number.isNaN(h) || Number.isNaN(min) || h < 0 || h > 23 || min < 0 || min > 59) return null;
+        return `${min} ${h} * * *`;
+      };
+
+      const c1 = horaManha ? toCron(horaManha) : null;
+      const c2 = horaNoite ? toCron(horaNoite) : null;
+      let idx = 0;
+      updated = updated.replace(/(cron:\s*['"])([^'"]+)(['"])/g, (full, p1, oldVal, p3) => {
+        const novo = idx === 0 && c1 ? c1 : idx === 1 && c2 ? c2 : oldVal;
+        idx += 1;
+        return `${p1}${novo}${p3}`;
+      });
+      return updated;
+    }
+
+    async function carregarDoGitHub() {
+      salvarConexaoLocal();
+      const owner = document.getElementById("ghOwner").value.trim();
+      const repo = document.getElementById("ghRepo").value.trim();
+      const branch = document.getElementById("ghBranch").value.trim() || "main";
+      const rotasPath = document.getElementById("ghRotasPath").value.trim() || "rotas.yaml";
+      const wfPath = document.getElementById("ghWorkflowPath").value.trim() || ".github/workflows/quackvoo.yml";
+      const token = document.getElementById("ghToken").value.trim();
+
+      if (!owner || !repo) {
+        mostrarStatus("Preencha o usuário/dono e o nome do repositório.", "err");
+        return;
+      }
+
+      try {
+        mostrarStatus("Carregando arquivos do GitHub...", "ok");
+        const arq = await buscarArquivoGitHub(owner, repo, rotasPath, branch, token);
+        const yamlStr = base64ToUtf8(arq.content);
+        const parsed = jsyaml.load(yamlStr) || {};
+        estado.rotasSha = arq.sha;
+        estado.avisos = { ...estado.avisos, ...(parsed.avisos || {}) };
+        estado.rotas = Array.isArray(parsed.rotas) ? parsed.rotas : [];
+
+        if (wfPath && token) {
+          try {
+            const wf = await buscarArquivoGitHub(owner, repo, wfPath, branch, token);
+            estado.workflowSha = wf.sha;
+            estado.workflowContent = base64ToUtf8(wf.content);
+            const crons = extrairCrons(estado.workflowContent);
+            estado.cronManha = crons.manha;
+            estado.cronNoite = crons.noite;
+          } catch (_) {}
+        }
+
+        sincronizarFormularioComEstado();
+        mostrarStatus(`Carregado ${rotasPath} (${estado.rotas.length} rota(s)) do GitHub!`, "ok");
+      } catch (e) {
+        mostrarStatus(e.message, "err");
+      }
+    }
+
+    async function salvarNoGitHub() {
+      salvarConexaoLocal();
+      const owner = document.getElementById("ghOwner").value.trim();
+      const repo = document.getElementById("ghRepo").value.trim();
+      const branch = document.getElementById("ghBranch").value.trim() || "main";
+      const rotasPath = document.getElementById("ghRotasPath").value.trim() || "rotas.yaml";
+      const wfPath = document.getElementById("ghWorkflowPath").value.trim() || ".github/workflows/quackvoo.yml";
+      const token = document.getElementById("ghToken").value.trim();
+
+      if (!owner || !repo || !token) {
+        mostrarStatus("Informe usuário, repositório e token do GitHub para salvar direto na nuvem.", "err");
+        return;
+      }
+
+      try {
+        atualizarPreviaYaml();
+        const novoYaml = document.getElementById("yamlPreview").value;
+        const atual = await buscarArquivoGitHub(owner, repo, rotasPath, branch, token);
+        const resp = await enviarArquivoGitHub(
+          owner,
+          repo,
+          rotasPath,
+          branch,
+          token,
+          novoYaml,
+          "Atualiza rotas.yaml via QuackVoo Painel",
+          atual.sha
+        );
+        estado.rotasSha = resp.content?.sha || atual.sha;
+
+        if (wfPath && (estado.cronManha || estado.cronNoite)) {
+          const wfAtual = await buscarArquivoGitHub(owner, repo, wfPath, branch, token);
+          const wfTexto = base64ToUtf8(wfAtual.content);
+          const wfNovo = aplicarCronsNoWorkflow(wfTexto, estado.cronManha, estado.cronNoite);
+          if (wfNovo !== wfTexto) {
+            const wfResp = await enviarArquivoGitHub(
+              owner,
+              repo,
+              wfPath,
+              branch,
+              token,
+              wfNovo,
+              "Atualiza horários do workflow via QuackVoo Painel",
+              wfAtual.sha
+            );
+            estado.workflowSha = wfResp.content?.sha || wfAtual.sha;
+            estado.workflowContent = wfNovo;
+          }
+        }
+
+        mostrarStatus("Salvo e commitado no GitHub com sucesso!", "ok");
+      } catch (e) {
+        mostrarStatus(e.message, "err");
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str).replace(/'/g, "&#39;");
+    }
+
+    carregarConexaoLocal();
+    sincronizarFormularioComEstado();
+  </script>
+</body>
+</html>
