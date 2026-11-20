@@ -32,12 +32,10 @@ def email(assunto: str, html: str, texto: str) -> str:
     return f"e-mail enviado para {para}"
 
 
-def _dividir_mensagem(texto: str, limite: int = 3900) -> list[str]:
+def _dividir_blocos(texto: str, limite: int = 3800) -> list[str]:
     if len(texto) <= limite:
         return [texto]
-
-    partes = []
-    atual = ""
+    partes, atual = [], ""
     for linha in texto.splitlines(keepends=True):
         if len(atual) + len(linha) > limite:
             if atual:
@@ -52,7 +50,7 @@ def _dividir_mensagem(texto: str, limite: int = 3900) -> list[str]:
     return partes
 
 
-def _remover_tags_html(texto: str) -> str:
+def _limpar_html(texto: str) -> str:
     sem_link = re.sub(r'<a\s+href=["\'](.*?)["\']>(.*?)</a>', r"\2 (\1)", texto)
     return re.sub(r"<[^>]+>", "", sem_link)
 
@@ -64,27 +62,26 @@ def telegram(texto: str, usar_html: bool = True) -> str:
         return "telegram: sem TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID, pulei"
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    blocos = _dividir_mensagem(texto)
-
-    for bloco in blocos:
+    for parte in _dividir_blocos(texto):
         payload = {
             "chat_id": chat_id,
-            "text": bloco,
+            "text": parte,
             "disable_web_page_preview": True,
         }
         if usar_html:
             payload["parse_mode"] = "HTML"
 
         r = requests.post(url, json=payload, timeout=60)
-
         if not r.ok and usar_html and "can't parse entities" in r.text.lower():
-            fallback_payload = {
-                "chat_id": chat_id,
-                "text": _remover_tags_html(bloco),
-                "disable_web_page_preview": True,
-            }
-            r = requests.post(url, json=fallback_payload, timeout=60)
-
+            r = requests.post(
+                url,
+                json={
+                    "chat_id": chat_id,
+                    "text": _limpar_html(parte),
+                    "disable_web_page_preview": True,
+                },
+                timeout=60,
+            )
         if not r.ok:
             return f"telegram falhou ({r.status_code}): {r.text[:120]}"
 
