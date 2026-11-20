@@ -48,5 +48,77 @@
    "visto": "2026-11-20"
   },
   "avisou_alvo": false
+ },
+ "Manaus -> Santa Cruz de la Sierra (Inverno/Neve)": {
+  "execucoes": [
+   {
+    "t": "2026-11-20",
+    "melhor": 1172,
+    "dia": "2027-05-29"
+   }
+  ],
+  "recorde": {
+   "preco": 1172,
+   "dia": "2027-05-29",
+   "visto": "2026-11-20"
+  },
+  "avisou_alvo": true,
+  "conexao": {
+   "hub": "GRU",
+   "dia": "2027-05-29",
+   "total": 1251,
+   "ida": {
+    "total": 1251,
+    "p1": {
+     "preco": 640,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDTUFPcgcIARIDR1JVQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    },
+    "p2": {
+     "preco": 611,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDR1JVcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    },
+    "data2": "2027-05-29"
+   },
+   "volta": null,
+   "economia": -79,
+   "vs_mesmo_dia": 1172,
+   "testado_em": "2026-11-20"
+  }
+ },
+ "Santarém -> Santa Cruz de la Sierra (Inverno/Neve)": {
+  "execucoes": [
+   {
+    "t": "2026-11-20",
+    "melhor": 3894,
+    "dia": "2027-05-31"
+   }
+  ],
+  "recorde": {
+   "preco": 3894,
+   "dia": "2027-05-31",
+   "visto": "2026-11-20"
+  },
+  "avisou_alvo": true,
+  "conexao": {
+   "hub": "GRU",
+   "dia": "2027-05-29",
+   "total": 1352,
+   "ida": {
+    "total": 1352,
+    "p1": {
+     "preco": 741,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDU1RNcgcIARIDR1JVQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    },
+    "p2": {
+     "preco": 611,
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDR1JVcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+    },
+    "data2": "2027-05-29"
+   },
+   "volta": null,
+   "economia": 2542,
+   "vs_mesmo_dia": 5160,
+   "testado_em": "2026-11-20"
+  }
  }
 }
