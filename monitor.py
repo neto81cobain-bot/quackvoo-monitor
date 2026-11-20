@@ -162,5 +162,5 @@ def montar(res_avisar: list[tuple[dict, list[str]]]) -> tuple[str, str, str]:
     assunto = f"🦆 Quack! {p0['origem']}→{p0['destino']} a partir de {A.reais(p0['melhor']['preco'])}" + (f" (+{len(principais)-1} rotas)" if len(principais) > 1 else "")
     txt, html = [], []
     for r, motivos in res_avisar:
-        if "melhor" not in r:
-            txt.append(f"⚠️ {r['nome']}: {'; '.join(r
+       if "melhor" not in r:
+            txt.append(f"⚠️ {r['nome']}: {'; '.join(r['erros'])}"); continue
