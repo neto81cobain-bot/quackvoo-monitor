@@ -24,6 +24,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Navegador para desenhar o relatório
+        run: python -m playwright install --with-deps chromium
       - name: Olhar os preços
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
