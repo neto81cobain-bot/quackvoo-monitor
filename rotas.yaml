@@ -11,7 +11,7 @@ rotas:
     ida_entre:
       - '2027-05-25'
       - '2027-09-05'
-    noites: 8
+    noites: 0
     adultos: 1
     preco_alvo: 2400
     queda_minima: 5
