@@ -1,896 +1,412 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuackVoo Painel</title>
-  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
-  <style>
-    :root {
-      --bg: #0b1020;
-      --surface: #131b31;
-      --surface-2: #1a2440;
-      --border: #28365c;
-      --text: #eef2ff;
-      --muted: #9aa7c7;
-      --accent: #38bdf8;
-      --accent-2: #22c55e;
-      --danger: #ef4444;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-      background: linear-gradient(180deg, #090d1a 0%, var(--bg) 100%);
-      color: var(--text);
-      line-height: 1.45;
-      padding-bottom: 112px;
-    }
-
-    .container { max-width: 960px; margin: 0 auto; padding: 16px; }
-
-    header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 18px;
-      padding: 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-    }
-
-    header h1 { margin: 0; font-size: 1.35rem; }
-    header p { margin: 4px 0 0; color: var(--muted); font-size: 0.88rem; }
-
-    .badge {
-      background: rgba(56, 189, 248, 0.14);
-      color: var(--accent);
-      border: 1px solid rgba(56, 189, 248, 0.35);
-      padding: 5px 10px;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 600;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .card-title { margin: 0; font-size: 1.05rem; font-weight: 700; }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
-      gap: 12px;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 12px;
-    }
-
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      font-size: 0.82rem;
-      color: var(--muted);
-    }
-
-    input, select, textarea {
-      width: 100%;
-      background: var(--surface-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.92rem;
-      outline: none;
-    }
-
-    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-
-    textarea {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.8rem;
-      min-height: 220px;
-      resize: vertical;
-    }
-
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-
-    .chip-btn {
-      background: var(--surface-2);
-      color: var(--muted);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 6px 12px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .chip-btn.active {
-      background: rgba(34, 197, 94, 0.16);
-      color: #86efac;
-      border-color: rgba(34, 197, 94, 0.5);
-    }
-
-    .btn {
-      border: 1px solid transparent;
-      border-radius: 11px;
-      padding: 10px 14px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-    }
-
-    .btn-primary { background: var(--accent); color: #061224; }
-    .btn-success { background: var(--accent-2); color: #052010; }
-    .btn-ghost { background: var(--surface-2); color: var(--text); border-color: var(--border); }
-    .btn-danger {
-      background: rgba(239, 68, 68, 0.15);
-      color: #fca5a5;
-      border-color: rgba(239, 68, 68, 0.4);
-    }
-    .btn-sm { padding: 6px 10px; font-size: 0.8rem; border-radius: 8px; }
-
-    .switch-row { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
-
-    .check-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.88rem;
-      color: var(--text);
-      cursor: pointer;
-    }
-
-    .check-item input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--accent-2);
-    }
-
-    .sticky-bar {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(11, 16, 32, 0.92);
-      backdrop-filter: blur(12px);
-      border-top: 1px solid var(--border);
-      padding: 12px 16px;
-      z-index: 50;
-    }
-
-    .sticky-inner {
-      max-width: 960px;
-      margin: 0 auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .status-box {
-      padding: 12px 14px;
-      border-radius: 12px;
-      font-size: 0.88rem;
-      margin-bottom: 14px;
-      border: 1px solid var(--border);
-      background: var(--surface-2);
-      display: none;
-    }
-
-    .status-box.show { display: block; }
-    .status-box.ok {
-      border-color: rgba(34, 197, 94, 0.45);
-      background: rgba(34, 197, 94, 0.12);
-      color: #bbf7d0;
-    }
-    .status-box.err {
-      border-color: rgba(239, 68, 68, 0.45);
-      background: rgba(239, 68, 68, 0.12);
-      color: #fecaca;
-    }
-
-    .help { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
-    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-    details summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.9rem; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuackVoo Painel</title>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<style>
+:root{--bg:#0b1020;--s1:#131b31;--s2:#1a2440;--bd:#28365c;--tx:#eef2ff;--mu:#9aa7c7;--ac:#38bdf8;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;background:linear-gradient(180deg,#090d1a,var(--bg));color:var(--tx);padding-bottom:120px;overflow-x:clip}
+.wrap{max-width:920px;margin:0 auto;padding:16px}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+h1{margin:0;font-size:1.4rem}h1 small{display:block;font-size:.85rem;color:var(--mu);font-weight:400}
+.badge{border:1px solid var(--bd);background:var(--s1);border-radius:999px;padding:6px 12px;font-size:.8rem;color:var(--mu)}
+.badge.on{color:#86efac;border-color:rgba(34,197,94,.5)}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:14px}
+.card h2{margin:0 0 12px;font-size:1.05rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label,.lbl{display:flex;flex-direction:column;gap:5px;font-size:.82rem;color:var(--mu)}
+input,select{width:100%;background:var(--s2);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:11px 12px;font-size:16px;outline:none}
+input:focus,select:focus{border-color:var(--ac)}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid transparent;border-radius:11px;padding:11px 14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px}
+.pri{background:var(--ac);color:#061224}.go{background:var(--ok);color:#052010}
+.gh{background:var(--s2);color:var(--tx);border-color:var(--bd)}
+.dang{background:rgba(239,68,68,.12);color:#fca5a5;border-color:rgba(239,68,68,.4)}
+.sm{min-height:36px;padding:6px 10px;font-size:.85rem;border-radius:9px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:flex;background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:3px}
+.seg button{flex:1;border:0;background:none;color:var(--mu);padding:10px 8px;border-radius:9px;font-weight:600;min-height:40px}
+.seg button.on{background:var(--ac);color:#061224}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--s2);color:var(--mu);border:1px solid var(--bd);border-radius:999px;padding:7px 12px;font-size:.85rem;font-weight:600;min-height:36px}
+.chip.on{background:rgba(34,197,94,.16);color:#86efac;border-color:rgba(34,197,94,.5)}
+.chip small{font-weight:400;opacity:.8}
+.rota{background:var(--s2);border:1px solid var(--bd);border-radius:16px;margin-bottom:14px;overflow:hidden}
+.rota.off{opacity:.6}
+.rhead{display:flex;gap:12px;align-items:center;padding:14px 16px;cursor:pointer}
+.rhead .t{flex:1}.rhead b{font-size:1.15rem;letter-spacing:.5px}
+.rhead .sub{color:var(--mu);font-size:.85rem}
+.price{text-align:right;font-size:.8rem;color:var(--mu)}.price b{display:block;font-size:1.05rem;color:#86efac}
+.rbody{padding:4px 16px 16px;border-top:1px solid var(--bd);display:grid;gap:16px}
+.rota:not(.open) .rbody{display:none}
+.od{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:8px;align-items:end}
+.swap{height:46px;border-radius:10px;background:var(--s1);border:1px solid var(--bd);color:var(--ac);font-size:1.2rem}
+.sec{font-size:.8rem;color:var(--mu);margin-bottom:6px;font-weight:600}
+.hint{font-size:.8rem;color:var(--mu);margin-top:6px}
+.warn{color:var(--warn)}
+.step{display:flex;align-items:center;border:1px solid var(--bd);border-radius:10px;background:var(--s1);overflow:hidden}
+.step button{width:44px;height:44px;border:0;background:none;color:var(--ac);font-size:1.3rem}
+.step input{border:0;text-align:center;background:none;padding:10px 0}
+.toggle{display:flex;align-items:center;gap:10px;font-size:.9rem;color:var(--tx)}
+.toggle input{width:20px;height:20px;accent-color:var(--ok)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(11,16,32,.94);backdrop-filter:blur(12px);border-top:1px solid var(--bd);padding:12px 16px;z-index:50}
+.bar .wrap{padding:0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.cost{font-size:.82rem;color:var(--mu)}.cost b{color:var(--tx)}
+#msg{display:none;padding:12px 14px;border-radius:12px;margin-bottom:14px;font-size:.9rem}
+#msg.ok{display:block;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.45);color:#bbf7d0}
+#msg.err{display:block;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.45);color:#fecaca}
+details summary{cursor:pointer;color:var(--ac);font-weight:600}
+textarea{width:100%;min-height:220px;background:var(--s2);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:10px;font:13px ui-monospace,Menlo,monospace}
+@media(max-width:520px){.price b{font-size:.95rem}.rhead{padding:12px}}
+</style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div>
-        <h1>QuackVoo Painel</h1>
-        <p>Edite rotas, conexões, datas, noites e horários direto do celular ou PC</p>
-      </div>
-      <span class="badge" id="repoBadge">Sem conexão GitHub</span>
-    </header>
+<div class="wrap">
+  <header>
+    <h1>QuackVoo Painel 🦆<small>Rotas, datas, escalas e avisos do monitor</small></h1>
+    <span class="badge" id="badge">desconectado</span>
+  </header>
+  <div id="msg"></div>
 
-    <div id="statusBox" class="status-box"></div>
+  <section class="card" id="conexao">
+    <h2>Conexão com o GitHub</h2>
+    <div class="grid">
+      <label>Dono do repositório<input id="ghOwner" placeholder="neto81cobain-bot" autocomplete="off"></label>
+      <label>Repositório<input id="ghRepo" placeholder="quackvoo-monitor" autocomplete="off"></label>
+      <label>Token (github_pat_…)<input id="ghToken" type="password" autocomplete="off"></label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn pri" onclick="conectar()">Conectar e carregar</button>
+      <button class="btn gh sm" onclick="esquecer()">Esquecer token</button>
+    </div>
+    <p class="hint">Token <b>fine-grained</b> só deste repositório, com <b>Contents: Read and write</b> (salvar) e <b>Actions: Read and write</b> (botão “Rodar agora”). Fica guardado só neste aparelho.</p>
+  </section>
 
-    <section class="card">
-      <div class="card-header">
-        <h2 class="card-title">Conexão com o GitHub</h2>
-        <button class="btn btn-ghost btn-sm" type="button" onclick="limparToken()">Limpar token</button>
-      </div>
-      <div class="grid-2">
-        <label>
-          Usuário / Dono do repo
-          <input id="ghOwner" type="text" placeholder="ex.: neto81cobain-bot" />
-        </label>
-        <label>
-          Nome do repositório
-          <input id="ghRepo" type="text" placeholder="ex.: quackvoo-monitor" />
-        </label>
-        <label>
-          Branch
-          <input id="ghBranch" type="text" value="main" />
-        </label>
-        <label>
-          Caminho do rotas.yaml
-          <input id="ghRotasPath" type="text" value="rotas.yaml" />
-        </label>
-        <label>
-          Caminho do workflow (opcional)
-          <input id="ghWorkflowPath" type="text" value=".github/workflows/quackvoo.yml" />
-        </label>
-        <label>
-          Fine-grained Token (apenas este repo)
-          <input id="ghToken" type="password" placeholder="github_pat_..." />
-        </label>
-      </div>
-      <div class="row-actions" style="margin-top: 12px;">
-        <button class="btn btn-primary" type="button" onclick="carregarDoGitHub()">Carregar rotas.yaml do GitHub</button>
-        <button class="btn btn-ghost" type="button" onclick="salvarConexaoLocal()">Salvar dados do repo no aparelho</button>
-      </div>
-      <p class="help">
-        Use um <strong>Fine-grained Personal Access Token</strong> limitado apenas ao repositório do QuackVoo com permissão <em>Contents: Read and write</em>. O token fica salvo apenas no <code>localStorage</code> deste navegador.
-      </p>
-    </section>
+  <section id="app" hidden>
+    <div class="row" style="justify-content:space-between;margin:4px 0 12px">
+      <h2 style="margin:0;font-size:1.1rem">Rotas monitoradas</h2>
+      <button class="btn pri sm" onclick="novaRota()">+ Nova rota</button>
+    </div>
+    <div id="rotas"></div>
 
     <section class="card">
-      <div class="card-header">
-        <h2 class="card-title">Avisos e Agendamento</h2>
-      </div>
+      <h2>Avisos e horários</h2>
       <div class="grid">
-        <label>
-          Economia mínima conexão (R$)
-          <input id="avEconomia" type="number" min="0" step="10" value="150" />
-        </label>
-        <label>
-          Resumo semanal
-          <select id="avResumoSemanal">
-            <option value="nenhum">nenhum</option>
-            <option value="segunda">segunda</option>
-            <option value="terca">terca</option>
-            <option value="quarta">quarta</option>
-            <option value="quinta">quinta</option>
-            <option value="sexta">sexta</option>
-            <option value="sabado">sabado</option>
-            <option value="domingo">domingo</option>
-          </select>
-        </label>
-        <label>
-          Testar conexões toda
-          <select id="avConexoesToda">
-            <option value="segunda">segunda</option>
-            <option value="terca">terca</option>
-            <option value="quarta">quarta</option>
-            <option value="quinta">quinta</option>
-            <option value="sexta">sexta</option>
-            <option value="sabado">sabado</option>
-            <option value="domingo">domingo</option>
-          </select>
-        </label>
-        <label>
-          Horário manhã (UTC HH:MM)
-          <input id="cronManha" type="text" placeholder="ex.: 10:00" />
-        </label>
-        <label>
-          Horário noite (UTC HH:MM)
-          <input id="cronNoite" type="text" placeholder="ex.: 01:00" />
-        </label>
+        <label>Rodar às (Brasília)<input id="h1" type="time"></label>
+        <label>E também às (opcional)<input id="h2" type="time"></label>
+        <label>Resumo semanal
+          <select id="resumo"></select></label>
+        <label>Testar escalas toda
+          <select id="conexoesToda"></select></label>
+        <label>Sugerir escala se economizar (R$)<input id="economia" type="number" min="0" step="10" inputmode="numeric"></label>
       </div>
-      <div class="switch-row">
-        <label class="check-item">
-          <input id="avEmail" type="checkbox" />
-          Enviar por e-mail
-        </label>
-        <label class="check-item">
-          <input id="avWhatsapp" type="checkbox" checked />
-          Enviar por Telegram / WhatsApp
-        </label>
+      <div class="row" style="gap:18px;margin-top:14px">
+        <label class="toggle"><input type="checkbox" id="tg"> Telegram</label>
+        <label class="toggle"><input type="checkbox" id="mail"> E-mail</label>
       </div>
-      <p class="help">
-        Os campos de horário UTC atualizam o <code>cron</code> do workflow quando o arquivo existir no repositório. Se deixar em branco, mantém o cron atual do workflow.
-      </p>
+      <p class="hint">Testar escalas é o que mais gasta crédito da Apify: por isso roda só num dia da semana.</p>
     </section>
 
     <section class="card">
-      <div class="card-header">
-        <h2 class="card-title">Rotas monitoradas</h2>
-        <button class="btn btn-primary btn-sm" type="button" onclick="adicionarRota()">+ Nova rota</button>
-      </div>
-      <div id="rotasContainer"></div>
-    </section>
-
-    <section class="card">
-      <details>
-        <summary>Ver / editar YAML gerado manualmente</summary>
-        <div style="margin-top: 12px;">
-          <textarea id="yamlPreview" spellcheck="false"></textarea>
-          <div class="row-actions" style="margin-top: 10px;">
-            <button class="btn btn-ghost btn-sm" type="button" onclick="aplicarYamlManual()">Aplicar YAML no formulário</button>
-            <button class="btn btn-ghost btn-sm" type="button" onclick="copiarYaml()">Copiar YAML</button>
-          </div>
-        </div>
+      <details><summary>Ver o rotas.yaml gerado</summary>
+        <textarea id="yaml" spellcheck="false" readonly style="margin-top:10px"></textarea>
       </details>
     </section>
-  </div>
+  </section>
+</div>
 
-  <div class="sticky-bar">
-    <div class="sticky-inner">
-      <div class="row-actions">
-        <button class="btn btn-ghost" type="button" onclick="atualizarPreviaYaml()">Atualizar YAML</button>
-        <button class="btn btn-ghost" type="button" onclick="baixarYaml()">Baixar rotas.yaml</button>
-      </div>
-      <button class="btn btn-success" type="button" onclick="salvarNoGitHub()">Salvar e commitar no GitHub</button>
+<div class="bar" id="barra" hidden>
+  <div class="wrap">
+    <div class="cost" id="custo"></div>
+    <div class="row">
+      <button class="btn gh" onclick="salvar(false)">Salvar</button>
+      <button class="btn go" onclick="salvar(true)">Salvar e rodar agora</button>
     </div>
   </div>
+</div>
 
-  <script>
-    const HUBS_COMUNS = ["GRU", "VCP", "CGH", "BSB", "CGB", "LIM", "BOG", "PTY", "GIG", "CNF", "MAO", "STM", "BEL"];
-    const DIAS_CON = [0, 1, 2, 3];
-    const STORAGE_KEY = "quackvoo_painel_cfg_v1";
+<datalist id="aeros"></datalist>
 
-    let estado = {
-      avisos: {
-        economia_minima_conexao: 150,
-        resumo_semanal: "domingo",
-        conexoes_toda: "segunda",
-        email: false,
-        whatsapp: true
-      },
-      rotas: [
-        {
-          nome: "Manaus -> Santa Cruz (Inverno)",
-          origem: "MAO",
-          destino: "VVI",
-          ida_entre: ["2027-05-25", "2027-09-05"],
-          noites: 8,
-          adultos: 1,
-          preco_alvo: 2400,
-          queda_minima: 5,
-          conexoes: ["GRU", "VCP", "BSB", "CGB"],
-          conexao_dias: [0, 1]
-        }
-      ],
-      workflowSha: null,
-      workflowContent: "",
-      cronManha: "",
-      cronNoite: "",
-      rotasSha: null
-    };
+<script>
+{
+const AEROS = [
+  ["MAO","Manaus"],["STM","Santarém"],["TMT","Porto Trombetas / Oriximiná"],["BEL","Belém"],["MCP","Macapá"],["ITB","Itaituba"],["ATM","Altamira"],["MAB","Marabá"],
+  ["SLZ","São Luís"],["THE","Teresina"],["FOR","Fortaleza"],["NAT","Natal"],["JPA","João Pessoa"],["REC","Recife"],["MCZ","Maceió"],["AJU","Aracaju"],["SSA","Salvador"],["BPS","Porto Seguro"],
+  ["BSB","Brasília"],["GYN","Goiânia"],["CGB","Cuiabá"],["CGR","Campo Grande"],["PVH","Porto Velho"],["RBR","Rio Branco"],["BVB","Boa Vista"],["PMW","Palmas"],
+  ["GRU","São Paulo – Guarulhos"],["CGH","São Paulo – Congonhas"],["VCP","Campinas – Viracopos"],["GIG","Rio – Galeão"],["SDU","Rio – Santos Dumont"],["CNF","Belo Horizonte – Confins"],["VIX","Vitória"],
+  ["CWB","Curitiba"],["FLN","Florianópolis"],["NVT","Navegantes"],["POA","Porto Alegre"],["IGU","Foz do Iguaçu"],
+  ["VVI","Santa Cruz de la Sierra"],["LPB","La Paz"],["CBB","Cochabamba"],["LIM","Lima"],["CUZ","Cusco"],["BOG","Bogotá"],["MDE","Medellín"],["PTY","Cidade do Panamá"],["UIO","Quito"],
+  ["EZE","Buenos Aires – Ezeiza"],["AEP","Buenos Aires – Aeroparque"],["SCL","Santiago"],["MVD","Montevidéu"],["ASU","Assunção"],["CCS","Caracas"],
+  ["MIA","Miami"],["MCO","Orlando"],["JFK","Nova York"],["CUN","Cancún"],["MEX","Cidade do México"],["LIS","Lisboa"],["OPO","Porto"],["MAD","Madri"],["CDG","Paris"],["FCO","Roma"]
+];
+const NOME = Object.fromEntries(AEROS);
+const HUBS_SUGERIDOS = ["GRU","VCP","CGH","BSB","CGB","GIG","CNF","BEL","MAO","LIM","BOG","PTY","SCL","EZE"];
+const DIAS = ["segunda","terca","quarta","quinta","sexta","sabado","domingo"];
+const ROTULO_DIA = {segunda:"segunda",terca:"terça",quarta:"quarta",quinta:"quinta",sexta:"sexta",sabado:"sábado",domingo:"domingo",nunca:"nunca"};
+const CHAVE = "quackvoo_painel_v2";
+const WF = ".github/workflows/quackvoo.yml";
+const hojeISO = () => new Date().toISOString().slice(0,10);
+const maisDias = (iso,n) => { const d = new Date(iso+"T12:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const diasEntre = (a,b) => Math.round((new Date(b+"T12:00") - new Date(a+"T12:00"))/864e5);
+const br = iso => iso ? new Date(iso+"T12:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).replace(".","") : "—";
+const reais = n => "R$ " + Math.round(n).toLocaleString("pt-BR");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $ = id => document.getElementById(id);
 
-    function mostrarStatus(msg, tipo = "ok") {
-      const box = document.getElementById("statusBox");
-      box.textContent = msg;
-      box.className = `status-box show ${tipo}`;
-      box.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
+let cfg = null, rotasSha = null, wfTexto = null, historico = {}, abertas = new Set([0]), carregado = false;
 
-    function salvarConexaoLocal() {
-      const dados = {
-        owner: document.getElementById("ghOwner").value.trim(),
-        repo: document.getElementById("ghRepo").value.trim(),
-        branch: document.getElementById("ghBranch").value.trim() || "main",
-        rotasPath: document.getElementById("ghRotasPath").value.trim() || "rotas.yaml",
-        workflowPath: document.getElementById("ghWorkflowPath").value.trim() || ".github/workflows/quackvoo.yml",
-        token: document.getElementById("ghToken").value.trim()
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dados));
-      atualizarBadge();
-      mostrarStatus("Configurações de conexão salvas neste navegador.", "ok");
-    }
+// ---------- armazenamento local ----------
+function lerLocal(){ try { return JSON.parse(localStorage.getItem(CHAVE) || localStorage.getItem("quackvoo_painel_cfg_v1") || "{}"); } catch { return {}; } }
+function gravarLocal(d){ try { localStorage.setItem(CHAVE, JSON.stringify(d)); } catch {} }
+function msg(t, tipo="ok"){ const m=$("msg"); m.textContent=t; m.className=tipo; m.scrollIntoView({block:"nearest",behavior:"smooth"}); }
 
-    function limparToken() {
-      document.getElementById("ghToken").value = "";
-      salvarConexaoLocal();
-      mostrarStatus("Token removido do navegador.", "ok");
-    }
+// ---------- GitHub ----------
+function con(){ return { owner:$("ghOwner").value.trim(), repo:$("ghRepo").value.trim(), token:$("ghToken").value.trim() }; }
+async function gh(path, opt={}){
+  const c = con();
+  const r = await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/${path}`, { ...opt,
+    headers:{ Accept:"application/vnd.github+json", ...(c.token?{Authorization:`Bearer ${c.token}`}:{}), ...(opt.body?{"Content-Type":"application/json"}:{}) } });
+  if (!r.ok){
+    const t = await r.text();
+    const dica = r.status===401 ? " (token inválido ou expirado)" : r.status===403 ? " (o token não tem essa permissão)" : r.status===404 ? " (repositório ou arquivo não encontrado)" : r.status===409 ? " (o arquivo mudou no GitHub: carregue de novo)" : "";
+    throw new Error(`GitHub ${r.status}${dica}: ${t.slice(0,120)}`);
+  }
+  return r.status===204 ? null : r.json();
+}
+const b64 = s => { const b=new TextEncoder().encode(s); let x=""; b.forEach(c=>x+=String.fromCharCode(c)); return btoa(x); };
+const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g,"")), c=>c.charCodeAt(0)));
+const lerArq = async p => { const a = await gh(`contents/${p}`); return { sha:a.sha, texto:unb64(a.content) }; };
+const gravarArq = (p, texto, sha, m) => gh(`contents/${p}`, { method:"PUT", body:JSON.stringify({ message:m, content:b64(texto), sha }) });
 
-    function atualizarBadge() {
-      const owner = document.getElementById("ghOwner").value.trim();
-      const repo = document.getElementById("ghRepo").value.trim();
-      const hasToken = Boolean(document.getElementById("ghToken").value.trim());
-      const badge = document.getElementById("repoBadge");
-      if (owner && repo) {
-        badge.textContent = `${owner}/${repo}${hasToken ? " · token ok" : " · sem token"}`;
-      } else {
-        badge.textContent = "Sem conexão GitHub";
-      }
-    }
+async function conectar(){
+  const c = con();
+  if (!c.owner || !c.repo) return msg("Preencha o dono e o nome do repositório.","err");
+  gravarLocal(c);
+  try {
+    msg("Carregando…");
+    const r = await lerArq("rotas.yaml");
+    rotasSha = r.sha; cfg = jsyaml.load(r.texto) || {};
+    cfg.rotas = Array.isArray(cfg.rotas) ? cfg.rotas : [];
+    cfg.avisos = cfg.avisos || {};
+    try { const w = await lerArq(WF); wfTexto = { sha:w.sha, texto:w.texto }; } catch { wfTexto = null; }
+    try { historico = JSON.parse((await lerArq("dados/historico.json")).texto); } catch { historico = {}; }
+    carregado = true;
+    $("app").hidden = false; $("barra").hidden = !c.token; $("conexao").hidden = !!c.token;
+    $("badge").textContent = `${c.owner}/${c.repo}${c.token?"":" · só leitura"}`; $("badge").className = "badge on";
+    preencherAvisos(); render();
+    msg(c.token ? `${cfg.rotas.length} rota(s) carregada(s).` : "Carregado só para ver: coloque o token para salvar.", c.token?"ok":"err");
+  } catch(e){ msg(e.message,"err"); }
+}
+function esquecer(){ $("ghToken").value=""; gravarLocal(con()); $("conexao").hidden=false; $("barra").hidden=true; msg("Token apagado deste aparelho."); }
 
-    function carregarConexaoLocal() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        const d = JSON.parse(raw);
-        if (d.owner) document.getElementById("ghOwner").value = d.owner;
-        if (d.repo) document.getElementById("ghRepo").value = d.repo;
-        if (d.branch) document.getElementById("ghBranch").value = d.branch;
-        if (d.rotasPath) document.getElementById("ghRotasPath").value = d.rotasPath;
-        if (d.workflowPath) document.getElementById("ghWorkflowPath").value = d.workflowPath;
-        if (d.token) document.getElementById("ghToken").value = d.token;
-        atualizarBadge();
-      } catch (e) {
-        console.error(e);
-      }
-    }
+// ---------- horários (Brasília ↔ cron UTC) ----------
+function cronsDoWorkflow(){
+  if (!wfTexto) return [];
+  return [...wfTexto.texto.matchAll(/cron:\s*["'](\d+)\s+(\d+)\s+\*\s+\*\s+\*["']/g)]
+    .map(m => { const h=(+m[2]-3+24)%24; return `${String(h).padStart(2,"0")}:${String(+m[1]).padStart(2,"0")}`; });
+}
+function workflowComHorarios(horas){
+  const linhas = horas.map(hm => { const [h,m]=hm.split(":").map(Number); return `    - cron: "${m} ${(h+3)%24} * * *"   # ${hm} (Brasília)`; });
+  return wfTexto.texto.replace(/(  schedule:\n)((?:    - cron:.*\n)+)/, `$1${linhas.join("\n")}\n`);
+}
 
-    function sincronizarFormularioComEstado() {
-      document.getElementById("avEconomia").value = estado.avisos.economia_minima_conexao ?? 150;
-      document.getElementById("avResumoSemanal").value = estado.avisos.resumo_semanal || "nenhum";
-      document.getElementById("avConexoesToda").value = estado.avisos.conexoes_toda || "segunda";
-      document.getElementById("avEmail").checked = Boolean(estado.avisos.email);
-      document.getElementById("avWhatsapp").checked = estado.avisos.whatsapp !== false;
-      document.getElementById("cronManha").value = estado.cronManha || "";
-      document.getElementById("cronNoite").value = estado.cronNoite || "";
-      renderRotas();
-      atualizarPreviaYaml();
-    }
+function preencherAvisos(){
+  const av = cfg.avisos;
+  $("resumo").innerHTML = ["nunca",...DIAS].map(d=>`<option value="${d}">${ROTULO_DIA[d]}</option>`).join("");
+  $("conexoesToda").innerHTML = DIAS.map(d=>`<option value="${d}">${ROTULO_DIA[d]}</option>`).join("");
+  $("resumo").value = DIAS.includes(av.resumo_semanal) ? av.resumo_semanal : "nunca";
+  $("conexoesToda").value = DIAS.includes(av.conexoes_toda) ? av.conexoes_toda : "segunda";
+  $("economia").value = av.economia_minima_conexao ?? 150;
+  $("tg").checked = (av.telegram ?? av.whatsapp) !== false;
+  $("mail").checked = !!av.email;
+  const hs = cronsDoWorkflow(); $("h1").value = hs[0]||""; $("h2").value = hs[1]||"";
+  ["resumo","conexoesToda","economia","tg","mail","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
+}
 
-    function lerFormularioParaEstado() {
-      estado.avisos = {
-        economia_minima_conexao: Number(document.getElementById("avEconomia").value || 0),
-        resumo_semanal: document.getElementById("avResumoSemanal").value,
-        conexoes_toda: document.getElementById("avConexoesToda").value,
-        email: document.getElementById("avEmail").checked,
-        whatsapp: document.getElementById("avWhatsapp").checked
-      };
-      estado.cronManha = document.getElementById("cronManha").value.trim();
-      estado.cronNoite = document.getElementById("cronNoite").value.trim();
-    }
+// ---------- rotas ----------
+function novaRota(){
+  const ini = maisDias(hojeISO(), 14);
+  cfg.rotas.push({ nome:"", origem:"STM", destino:"BEL", ida_entre:[ini, maisDias(ini,45)], noites:0, adultos:1, preco_alvo:null, queda_minima:5, conexoes:[], conexao_dias:[0,1], ativa:true });
+  abertas.add(cfg.rotas.length-1); render();
+  setTimeout(()=>document.querySelectorAll(".rota")[cfg.rotas.length-1]?.scrollIntoView({behavior:"smooth"}),50);
+}
+function nomeAuto(r){ return `${NOME[r.origem]?.split(" –")[0] || r.origem} → ${NOME[r.destino]?.split(" –")[0] || r.destino}`; }
+window.acao = (i, tipo, v) => {
+  const r = cfg.rotas[i];
+  if (tipo==="abrir"){ abertas.has(i)?abertas.delete(i):abertas.add(i); }
+  if (tipo==="tipo") r.noites = v ? (r.noites||7) : 0;
+  if (tipo==="noites") r.noites = Math.max(1, Math.min(60, (+r.noites||1) + v));
+  if (tipo==="adultos") r.adultos = Math.max(1, Math.min(9, (+r.adultos||1) + v));
+  if (tipo==="trocar") [r.origem, r.destino] = [r.destino, r.origem];
+  if (tipo==="hub"){ r.conexoes = r.conexoes||[]; const k=r.conexoes.indexOf(v); k>=0 ? r.conexoes.splice(k,1) : r.conexoes.push(v); }
+  if (tipo==="addhub"){ const el=$(`novohub${i}`); const c=(el.value.match(/^[A-Za-z]{3}/)||[""])[0].toUpperCase(); if(c){ r.conexoes=r.conexoes||[]; if(!r.conexoes.includes(c)) r.conexoes.push(c); } }
+  if (tipo==="folga"){ r.conexao_dias = r.conexao_dias||[]; const k=r.conexao_dias.indexOf(v); k>=0 ? r.conexao_dias.splice(k,1) : r.conexao_dias.push(v); r.conexao_dias.sort(); if(!r.conexao_dias.length) r.conexao_dias=[0]; }
+  if (tipo==="periodo"){ const ini = maisDias(hojeISO(), 1); r.ida_entre = v==="mes" ? [ini, maisDias(ini,30)] : v==="tri" ? [ini, maisDias(ini,90)] : [ini, maisDias(ini,180)]; }
+  if (tipo==="ativa") r.ativa = r.ativa===false;
+  if (tipo==="duplicar"){ cfg.rotas.splice(i+1,0,{...structuredClone(r), nome:(r.nome||nomeAuto(r))+" (cópia)"}); abertas.add(i+1); }
+  if (tipo==="excluir"){ if (!confirmar(i)) return; cfg.rotas.splice(i,1); abertas = new Set([...abertas].filter(x=>x!==i).map(x=>x>i?x-1:x)); }
+  render();
+};
+let pedidoExcluir = null;
+function confirmar(i){ if (pedidoExcluir===i){ pedidoExcluir=null; return true; } pedidoExcluir=i; msg("Toque em Excluir de novo para confirmar.","err"); setTimeout(()=>pedidoExcluir=null,4000); return false; }
+window.campo = (i, k, v) => {
+  const r = cfg.rotas[i];
+  if (k==="origem"||k==="destino") v = (String(v).match(/^[A-Za-z]{3}/)||[""])[0].toUpperCase();
+  if (k==="ini") { r.ida_entre[0] = v; if (r.ida_entre[1] < v) r.ida_entre[1] = maisDias(v,30); }
+  else if (k==="fim") r.ida_entre[1] = v;
+  else if (["preco_alvo","queda_minima"].includes(k)) r[k] = v==="" ? null : Number(v);
+  else r[k] = v;
+  if (["origem","destino","ini","fim"].includes(k)) render(); else atualizarRodape();
+};
 
-    function adicionarRota() {
-      lerFormularioParaEstado();
-      estado.rotas.push({
-        nome: `Nova Rota ${estado.rotas.length + 1}`,
-        origem: "STM",
-        destino: "VVI",
-        ida_entre: ["2027-05-25", "2027-09-05"],
-        noites: 8,
-        adultos: 1,
-        preco_alvo: 2500,
-        queda_minima: 5,
-        conexoes: ["GRU", "BSB"],
-        conexao_dias: [0, 1]
-      });
-      renderRotas();
-      atualizarPreviaYaml();
-    }
+function avisosDaRota(r){
+  const a = [], hoje = hojeISO(), [ini, fim] = (r.ida_entre||[]).map(String);
+  if (!r.origem || !r.destino) a.push("Escolha origem e destino.");
+  if (r.origem && r.origem===r.destino) a.push("Origem e destino iguais.");
+  if (fim && fim < hoje) a.push("O período já passou: nada será buscado.");
+  if (ini && fim && fim < ini) a.push("A data final é antes da inicial.");
+  if (ini && fim && diasEntre(ini, fim) > 330) a.push("Período longo: o calendário do Google vai até ~11 meses à frente.");
+  return a;
+}
 
-    function removerRota(idx) {
-      lerFormularioParaEstado();
-      estado.rotas.splice(idx, 1);
-      renderRotas();
-      atualizarPreviaYaml();
-    }
+function render(){
+  $("rotas").innerHTML = cfg.rotas.length ? cfg.rotas.map((r,i)=>{
+    r.ida_entre = (r.ida_entre||[]).map(x=>String(x).slice(0,10)); r.conexoes = r.conexoes||[]; r.conexao_dias = r.conexao_dias||[0,1];
+    const iv = +r.noites>0, h = historico[r.nome] || {}, ult = h.execucoes?.slice(-1)[0], rec = h.recorde;
+    const [ini, fim] = r.ida_entre, dias = ini&&fim ? diasEntre(ini<hojeISO()?hojeISO():ini, fim)+1 : 0;
+    const avs = avisosDaRota(r);
+    const hubs = [...new Set([...HUBS_SUGERIDOS, ...r.conexoes])].filter(c=>c!==r.origem && c!==r.destino);
+    return `<article class="rota ${abertas.has(i)?"open":""} ${r.ativa===false?"off":""}">
+      <div class="rhead" onclick="acao(${i},'abrir')">
+        <div class="t"><b>${esc(r.origem)} → ${esc(r.destino)}</b>${r.ativa===false?' <span class="sub">· pausada</span>':""}
+          <div class="sub">${iv?`ida e volta · ${r.noites} noites`:"só ida"} · ${br(ini)} a ${br(fim)}${r.conexoes.length?` · escalas: ${r.conexoes.join(", ")}`:""}</div></div>
+        <div class="price">${ult?`último<b>${reais(ult.melhor)}</b>${br(ult.dia)}`:"ainda sem preço"}${rec&&ult&&rec.preco<ult.melhor?`<div>recorde ${reais(rec.preco)}</div>`:""}</div>
+      </div>
+      <div class="rbody">
+        <label>Nome (aparece no Telegram)<input value="${esc(r.nome)}" placeholder="${esc(nomeAuto(r))}" oninput="campo(${i},'nome',this.value)"></label>
 
-    function toggleHub(rotaIdx, hub) {
-      lerFormularioParaEstado();
-      const r = estado.rotas[rotaIdx];
-      r.conexoes = Array.isArray(r.conexoes) ? [...r.conexoes] : [];
-      const i = r.conexoes.indexOf(hub);
-      if (i >= 0) r.conexoes.splice(i, 1);
-      else r.conexoes.push(hub);
-      renderRotas();
-      atualizarPreviaYaml();
-    }
-
-    function toggleDiaCon(rotaIdx, dia) {
-      lerFormularioParaEstado();
-      const r = estado.rotas[rotaIdx];
-      r.conexao_dias = Array.isArray(r.conexao_dias) ? [...r.conexao_dias] : [];
-      const i = r.conexao_dias.indexOf(dia);
-      if (i >= 0) r.conexao_dias.splice(i, 1);
-      else r.conexao_dias.push(dia);
-      r.conexao_dias.sort((a, b) => a - b);
-      renderRotas();
-      atualizarPreviaYaml();
-    }
-
-    function renderRotas() {
-      const container = document.getElementById("rotasContainer");
-      container.innerHTML = "";
-
-      estado.rotas.forEach((r, idx) => {
-        const ini = Array.isArray(r.ida_entre) && r.ida_entre[0] ? String(r.ida_entre[0]).slice(0, 10) : "2027-05-25";
-        const fim = Array.isArray(r.ida_entre) && r.ida_entre[1] ? String(r.ida_entre[1]).slice(0, 10) : "2027-09-05";
-        const hubsAtuais = Array.isArray(r.conexoes) ? r.conexoes : [];
-        const diasAtuais = Array.isArray(r.conexao_dias) ? r.conexao_dias : [0, 1];
-
-        const div = document.createElement("div");
-        div.className = "card";
-        div.style.background = "var(--surface-2)";
-        div.innerHTML = `
-          <div class="card-header">
-            <h3 class="card-title">Rota #${idx + 1}: ${escapeHtml(r.nome || "Sem nome")}</h3>
-            <button class="btn btn-danger btn-sm" type="button" onclick="removerRota(${idx})">Excluir</button>
+        <div><div class="sec">Rota</div>
+          <div class="od">
+            <label>De<input list="aeros" value="${esc(r.origem)}" onchange="campo(${i},'origem',this.value)" autocomplete="off"></label>
+            <button class="swap" title="Inverter" onclick="acao(${i},'trocar')">⇄</button>
+            <label>Para<input list="aeros" value="${esc(r.destino)}" onchange="campo(${i},'destino',this.value)" autocomplete="off"></label>
           </div>
-          <div class="grid">
-            <label>
-              Nome da rota
-              <input type="text" value="${escapeAttr(r.nome || "")}" oninput="atualizarCampoRota(${idx}, 'nome', this.value)" />
-            </label>
-            <label>
-              Origem (IATA)
-              <input type="text" maxlength="3" style="text-transform:uppercase" value="${escapeAttr(r.origem || "")}" oninput="atualizarCampoRota(${idx}, 'origem', this.value.toUpperCase())" />
-            </label>
-            <label>
-              Destino (IATA)
-              <input type="text" maxlength="3" style="text-transform:uppercase" value="${escapeAttr(r.destino || "")}" oninput="atualizarCampoRota(${idx}, 'destino', this.value.toUpperCase())" />
-            </label>
-            <label>
-              Ida a partir de
-              <input type="date" value="${ini}" onchange="atualizarDataRota(${idx}, 0, this.value)" />
-            </label>
-            <label>
-              Ida até
-              <input type="date" value="${fim}" onchange="atualizarDataRota(${idx}, 1, this.value)" />
-            </label>
-            <label>
-              Noites (0 = só ida)
-              <input type="number" min="0" value="${Number(r.noites || 0)}" oninput="atualizarCampoRota(${idx}, 'noites', Number(this.value || 0))" />
-            </label>
-            <label>
-              Adultos
-              <input type="number" min="1" value="${Number(r.adultos || 1)}" oninput="atualizarCampoRota(${idx}, 'adultos', Number(this.value || 1))" />
-            </label>
-            <label>
-              Preço alvo (R$)
-              <input type="number" min="0" step="50" value="${r.preco_alvo ?? ""}" oninput="atualizarCampoRota(${idx}, 'preco_alvo', this.value ? Number(this.value) : null)" />
-            </label>
-            <label>
-              Queda mínima (%)
-              <input type="number" min="0" max="100" value="${Number(r.queda_minima ?? 5)}" oninput="atualizarCampoRota(${idx}, 'queda_minima', Number(this.value || 0))" />
-            </label>
+          <div class="hint">${esc(NOME[r.origem]||r.origem)} → ${esc(NOME[r.destino]||r.destino)} · digite a cidade ou o código</div>
+        </div>
+
+        <div><div class="sec">Tipo de passagem</div>
+          <div class="seg"><button class="${iv?"":"on"}" onclick="acao(${i},'tipo',false)">Só ida</button><button class="${iv?"on":""}" onclick="acao(${i},'tipo',true)">Ida e volta</button></div>
+          <div class="grid" style="margin-top:10px">
+            ${iv?`<div class="lbl">Noites no destino<div class="step"><button onclick="acao(${i},'noites',-1)">−</button><input readonly value="${r.noites}"><button onclick="acao(${i},'noites',1)">+</button></div></div>`:""}
+            <div class="lbl">Adultos<div class="step"><button onclick="acao(${i},'adultos',-1)">−</button><input readonly value="${r.adultos||1}"><button onclick="acao(${i},'adultos',1)">+</button></div></div>
           </div>
+          ${iv?`<div class="hint">Volta ${r.noites} dias depois da ida. Ex.: ida ${br(ini)} → volta ${br(maisDias(ini,+r.noites))}.</div>`:""}
+        </div>
 
-          <div style="margin-top: 12px;">
-            <div style="font-size: 0.82rem; color: var(--muted);">Aeroportos de conexão (hubs):</div>
-            <div class="chips">
-              ${HUBS_COMUNS.map(h => `
-                <button type="button" class="chip-btn ${hubsAtuais.includes(h) ? "active" : ""}" onclick="toggleHub(${idx}, '${h}')">${h}</button>
-              `).join("")}
-            </div>
-          </div>
+        <div><div class="sec">Período em que você pode sair</div>
+          <div class="grid"><label>Ida a partir de<input type="date" value="${ini}" onchange="campo(${i},'ini',this.value)"></label>
+            <label>Ida até<input type="date" value="${fim}" onchange="campo(${i},'fim',this.value)"></label></div>
+          <div class="chips" style="margin-top:8px"><button class="chip" onclick="acao(${i},'periodo','mes')">Próximos 30 dias</button><button class="chip" onclick="acao(${i},'periodo','tri')">3 meses</button><button class="chip" onclick="acao(${i},'periodo','sem')">6 meses</button></div>
+          <div class="hint">${dias>0?`${dias} datas de ida analisadas em cada busca`:""}</div>
+        </div>
 
-          <div style="margin-top: 12px;">
-            <div style="font-size: 0.82rem; color: var(--muted);">Folga de dias na conexão (<code>conexao_dias</code>):</div>
-            <div class="chips">
-              ${DIAS_CON.map(d => `
-                <button type="button" class="chip-btn ${diasAtuais.includes(d) ? "active" : ""}" onclick="toggleDiaCon(${idx}, ${d})">+${d} dia${d === 1 ? "" : "s"}</button>
-              `).join("")}
-            </div>
-          </div>
-        `;
-        container.appendChild(div);
-      });
-    }
+        <div><div class="sec">Onde testar escalas por conta própria</div>
+          <div class="chips">${hubs.map(c=>`<button class="chip ${r.conexoes.includes(c)?"on":""}" onclick="acao(${i},'hub','${c}')">${c} <small>${esc((NOME[c]||"").split(" –")[0])}</small></button>`).join("")}</div>
+          <div class="row" style="margin-top:8px"><input id="novohub${i}" list="aeros" placeholder="Outro aeroporto (cidade ou código)" style="flex:1;min-width:180px"><button class="btn gh sm" onclick="acao(${i},'addhub')">Adicionar</button></div>
+          <div class="hint">${r.conexoes.length?`Ex.: ${esc(r.origem)} → ${esc(r.conexoes[0])} + ${esc(r.conexoes[0])} → ${esc(r.destino)} em 2 passagens. Nenhum marcado = não testa escalas.`:"Nenhum marcado: só busca o voo normal."}</div>
+          ${r.conexoes.length?`<div class="sec" style="margin-top:12px">Na escala, aceito</div>
+          <div class="chips">${[[0,"Seguir no mesmo dia"],[1,"Dormir 1 noite"],[2,"Ficar 2 noites"]].map(([d,t])=>`<button class="chip ${r.conexao_dias.includes(d)?"on":""}" onclick="acao(${i},'folga',${d})">${t}</button>`).join("")}</div>`:""}
+        </div>
 
-    function atualizarCampoRota(idx, campo, valor) {
-      estado.rotas[idx][campo] = valor;
-      atualizarPreviaYaml();
-    }
+        <div><div class="sec">Quando me avisar</div>
+          <div class="grid"><label>Preço-alvo total (R$)<input type="number" inputmode="numeric" min="0" step="50" value="${r.preco_alvo??""}" placeholder="opcional" oninput="campo(${i},'preco_alvo',this.value)"></label>
+            <label>Queda mínima (%)<input type="number" inputmode="numeric" min="1" max="90" value="${r.queda_minima??5}" oninput="campo(${i},'queda_minima',this.value)"></label></div>
+        </div>
 
-    function atualizarDataRota(idx, pos, valor) {
-      if (!Array.isArray(estado.rotas[idx].ida_entre)) {
-        estado.rotas[idx].ida_entre = ["2027-05-25", "2027-09-05"];
-      }
-      estado.rotas[idx].ida_entre[pos] = valor;
-      atualizarPreviaYaml();
-    }
+        ${avs.length?`<div class="hint warn">⚠️ ${avs.map(esc).join("<br>⚠️ ")}</div>`:""}
+        <div class="row">
+          <button class="btn gh sm" onclick="acao(${i},'ativa')">${r.ativa===false?"▶ Retomar":"⏸ Pausar"}</button>
+          <button class="btn gh sm" onclick="acao(${i},'duplicar')">Duplicar</button>
+          <button class="btn dang sm" onclick="acao(${i},'excluir')">Excluir</button>
+        </div>
+      </div>
+    </article>`;
+  }).join("") : `<div class="card" style="text-align:center">Nenhuma rota ainda. Toque em <b>+ Nova rota</b>.</div>`;
+  atualizarRodape();
+}
 
-    function montarObjetoYaml() {
-      lerFormularioParaEstado();
-      const rotasLimpa = estado.rotas.map(r => {
-        const obj = {
-          nome: r.nome || "Rota",
-          origem: (r.origem || "").toUpperCase(),
-          destino: (r.destino || "").toUpperCase(),
-          ida_entre: [
-            String((r.ida_entre && r.ida_entre[0]) || "2027-05-25"),
-            String((r.ida_entre && r.ida_entre[1]) || "2027-09-05")
-          ],
-          noites: Number(r.noites || 0),
-          adultos: Number(r.adultos || 1)
-        };
-        if (r.preco_alvo !== null && r.preco_alvo !== undefined && r.preco_alvo !== "") {
-          obj.preco_alvo = Number(r.preco_alvo);
-        }
-        obj.queda_minima = Number(r.queda_minima ?? 5);
-        if (Array.isArray(r.conexoes) && r.conexoes.length) {
-          obj.conexoes = r.conexoes;
-        }
-        if (Array.isArray(r.conexao_dias) && r.conexao_dias.length) {
-          obj.conexao_dias = r.conexao_dias;
-        }
-        return obj;
-      });
+// ---------- custo estimado (Apify ~US$ 0,20 / 1.000 dias de calendário) ----------
+function custoMes(){
+  const execDia = [$("h1").value,$("h2").value].filter(Boolean).length || 1, hoje = hojeISO();
+  let dias = 0;
+  for (const r of cfg.rotas){
+    if (r.ativa===false) continue;
+    const [ini, fim] = r.ida_entre; if (!ini||!fim||fim<hoje) continue;
+    const n = diasEntre(ini<hoje?hoje:ini, fim)+1, iv = +r.noites>0, hubs = r.conexoes.length;
+    dias += n * execDia * 30;
+    if (hubs) dias += n * execDia * 4.3 * (iv ? 2 + hubs*4 : hubs*2);
+  }
+  return dias * 0.0002;
+}
+function montarYaml(){
+  const av = { ...cfg.avisos, economia_minima_conexao:+$("economia").value||0, resumo_semanal:$("resumo").value, conexoes_toda:$("conexoesToda").value, email:$("mail").checked, telegram:$("tg").checked };
+  delete av.whatsapp;
+  const rotas = cfg.rotas.map(r => {
+    const o = { nome:(r.nome||"").trim() || nomeAuto(r), origem:r.origem, destino:r.destino, ida_entre:r.ida_entre.map(String), noites:+r.noites||0, adultos:+r.adultos||1 };
+    if (r.preco_alvo) o.preco_alvo = +r.preco_alvo;
+    o.queda_minima = +r.queda_minima || 5;
+    if (r.conexoes.length){ o.conexoes = r.conexoes; o.conexao_dias = r.conexao_dias; }
+    if (r.ativa===false) o.ativa = false;
+    return o;
+  });
+  return jsyaml.dump({ avisos:av, rotas }, { lineWidth:-1, noRefs:true });
+}
+function atualizarRodape(){
+  if (!cfg) return;
+  const c = custoMes(), ativas = cfg.rotas.filter(r=>r.ativa!==false).length;
+  $("custo").innerHTML = `${ativas} rota(s) ativa(s) · Apify ≈ <b>US$ ${c.toFixed(2)}/mês</b> ${c>5?'<span class="warn">acima dos US$ 5 grátis</span>':"de US$ 5 grátis"}`;
+  $("yaml").value = montarYaml();
+}
 
-      return {
-        avisos: {
-          economia_minima_conexao: Number(estado.avisos.economia_minima_conexao || 0),
-          resumo_semanal: estado.avisos.resumo_semanal || "nenhum",
-          conexoes_toda: estado.avisos.conexoes_toda || "segunda",
-          email: Boolean(estado.avisos.email),
-          whatsapp: Boolean(estado.avisos.whatsapp)
-        },
-        rotas: rotasLimpa
-      };
-    }
-
-    function atualizarPreviaYaml() {
-      const obj = montarObjetoYaml();
-      document.getElementById("yamlPreview").value = jsyaml.dump(obj, { lineWidth: -1, noRefs: true });
-    }
-
-    function aplicarYamlManual() {
-      try {
-        const parsed = jsyaml.load(document.getElementById("yamlPreview").value);
-        if (!parsed || !Array.isArray(parsed.rotas)) {
-          throw new Error("YAML precisa conter a chave 'rotas'.");
-        }
-        estado.avisos = { ...estado.avisos, ...(parsed.avisos || {}) };
-        estado.rotas = parsed.rotas;
-        sincronizarFormularioComEstado();
-        mostrarStatus("YAML aplicado ao formulário com sucesso.", "ok");
-      } catch (e) {
-        mostrarStatus("Erro ao ler YAML: " + e.message, "err");
+// ---------- salvar ----------
+async function salvar(rodar){
+  if (!carregado) return msg("Carregue as rotas do GitHub antes de salvar.","err");
+  const problemas = cfg.rotas.flatMap((r,i)=>avisosDaRota(r).filter(a=>!a.startsWith("Período longo")).map(a=>`${r.origem}→${r.destino}: ${a}`));
+  if (problemas.some(p=>/Escolha|iguais|antes da inicial/.test(p))) return msg("Corrija antes de salvar: "+problemas.join(" · "),"err");
+  try {
+    msg("Salvando…");
+    const atual = await gh("contents/rotas.yaml");
+    if (atual.sha !== rotasSha) return msg("O rotas.yaml mudou no GitHub desde que você abriu o painel. Toque em Conectar e carregar de novo para não sobrescrever.","err");
+    const r = await gravarArq("rotas.yaml", montarYaml(), rotasSha, "Atualiza rotas via QuackVoo Painel");
+    rotasSha = r.content.sha;
+    const horas = [$("h1").value,$("h2").value].filter(Boolean);
+    if (wfTexto && horas.length){
+      const novo = workflowComHorarios(horas);
+      if (novo !== wfTexto.texto){
+        const w = await gravarArq(WF, novo, wfTexto.sha, "Atualiza horários via QuackVoo Painel");
+        wfTexto = { sha:w.content.sha, texto:novo };
       }
     }
+    if (rodar){
+      await gh(`actions/workflows/quackvoo.yml/dispatches`, { method:"POST", body:JSON.stringify({ ref:"main", inputs:{ forcar:"true" } }) });
+      msg("Salvo! O monitor já está rodando: o relatório chega no Telegram em 1–3 minutos. 🦆");
+    } else msg("Salvo! Vale a partir da próxima execução.");
+  } catch(e){ msg(e.message + (rodar && /403/.test(e.message) ? " — para o botão Rodar agora o token precisa de Actions: Read and write." : ""),"err"); }
+}
 
-    function copiarYaml() {
-      atualizarPreviaYaml();
-      const txt = document.getElementById("yamlPreview").value;
-      navigator.clipboard?.writeText(txt).then(() => {
-        mostrarStatus("YAML copiado para a área de transferência.", "ok");
-      }).catch(() => {
-        mostrarStatus("Não foi possível copiar automaticamente.", "err");
-      });
-    }
-
-    function baixarYaml() {
-      atualizarPreviaYaml();
-      const blob = new Blob([document.getElementById("yamlPreview").value], { type: "text/yaml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "rotas.yaml";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function utf8ToBase64(str) {
-      const bytes = new TextEncoder().encode(str);
-      let bin = "";
-      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-      return btoa(bin);
-    }
-
-    function base64ToUtf8(b64) {
-      const bin = atob(b64.replace(/\n/g, ""));
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      return new TextDecoder().decode(bytes);
-    }
-
-    async function buscarArquivoGitHub(owner, repo, path, branch, token) {
-      const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}?ref=${encodeURIComponent(branch)}`;
-      const headers = { Accept: "application/vnd.github+json" };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const res = await fetch(url, { headers });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`GitHub (${res.status}): ${txt.slice(0, 140)}`);
-      }
-      return res.json();
-    }
-
-    async function enviarArquivoGitHub(owner, repo, path, branch, token, content, message, sha = null) {
-      const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}`;
-      const body = {
-        message,
-        content: utf8ToBase64(content),
-        branch
-      };
-      if (sha) body.sha = sha;
-      const res = await fetch(url, {
-        method: "PUT",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Falha ao salvar ${path} (${res.status}): ${txt.slice(0, 160)}`);
-      }
-      return res.json();
-    }
-
-    function extrairCrons(ymlText) {
-      const matches = [...ymlText.matchAll(/cron:\s*['"](\d+)\s+(\d+)\s+\*\s+\*\s+\*['"]/g)];
-      const fmt = m => `${String(Number(m[2])).padStart(2, "0")}:${String(Number(m[1])).padStart(2, "0")}`;
-      return {
-        manha: matches[0] ? fmt(matches[0]) : "",
-        noite: matches[1] ? fmt(matches[1]) : ""
-      };
-    }
-
-    function aplicarCronsNoWorkflow(ymlText, horaManha, horaNoite) {
-      let updated = ymlText;
-      const toCron = hhmm => {
-        const parts = hhmm.split(":");
-        if (parts.length !== 2) return null;
-        const h = Number(parts[0]);
-        const min = Number(parts[1]);
-        if (Number.isNaN(h) || Number.isNaN(min) || h < 0 || h > 23 || min < 0 || min > 59) return null;
-        return `${min} ${h} * * *`;
-      };
-
-      const c1 = horaManha ? toCron(horaManha) : null;
-      const c2 = horaNoite ? toCron(horaNoite) : null;
-      let idx = 0;
-      updated = updated.replace(/(cron:\s*['"])([^'"]+)(['"])/g, (full, p1, oldVal, p3) => {
-        const novo = idx === 0 && c1 ? c1 : idx === 1 && c2 ? c2 : oldVal;
-        idx += 1;
-        return `${p1}${novo}${p3}`;
-      });
-      return updated;
-    }
-
-    async function carregarDoGitHub() {
-      salvarConexaoLocal();
-      const owner = document.getElementById("ghOwner").value.trim();
-      const repo = document.getElementById("ghRepo").value.trim();
-      const branch = document.getElementById("ghBranch").value.trim() || "main";
-      const rotasPath = document.getElementById("ghRotasPath").value.trim() || "rotas.yaml";
-      const wfPath = document.getElementById("ghWorkflowPath").value.trim() || ".github/workflows/quackvoo.yml";
-      const token = document.getElementById("ghToken").value.trim();
-
-      if (!owner || !repo) {
-        mostrarStatus("Preencha o usuário/dono e o nome do repositório.", "err");
-        return;
-      }
-
-      try {
-        mostrarStatus("Carregando arquivos do GitHub...", "ok");
-        const arq = await buscarArquivoGitHub(owner, repo, rotasPath, branch, token);
-        const yamlStr = base64ToUtf8(arq.content);
-        const parsed = jsyaml.load(yamlStr) || {};
-        estado.rotasSha = arq.sha;
-        estado.avisos = { ...estado.avisos, ...(parsed.avisos || {}) };
-        estado.rotas = Array.isArray(parsed.rotas) ? parsed.rotas : [];
-
-        if (wfPath && token) {
-          try {
-            const wf = await buscarArquivoGitHub(owner, repo, wfPath, branch, token);
-            estado.workflowSha = wf.sha;
-            estado.workflowContent = base64ToUtf8(wf.content);
-            const crons = extrairCrons(estado.workflowContent);
-            estado.cronManha = crons.manha;
-            estado.cronNoite = crons.noite;
-          } catch (_) {}
-        }
-
-        sincronizarFormularioComEstado();
-        mostrarStatus(`Carregado ${rotasPath} (${estado.rotas.length} rota(s)) do GitHub!`, "ok");
-      } catch (e) {
-        mostrarStatus(e.message, "err");
-      }
-    }
-
-    async function salvarNoGitHub() {
-      salvarConexaoLocal();
-      const owner = document.getElementById("ghOwner").value.trim();
-      const repo = document.getElementById("ghRepo").value.trim();
-      const branch = document.getElementById("ghBranch").value.trim() || "main";
-      const rotasPath = document.getElementById("ghRotasPath").value.trim() || "rotas.yaml";
-      const wfPath = document.getElementById("ghWorkflowPath").value.trim() || ".github/workflows/quackvoo.yml";
-      const token = document.getElementById("ghToken").value.trim();
-
-      if (!owner || !repo || !token) {
-        mostrarStatus("Informe usuário, repositório e token do GitHub para salvar direto na nuvem.", "err");
-        return;
-      }
-
-      try {
-        atualizarPreviaYaml();
-        const novoYaml = document.getElementById("yamlPreview").value;
-        const atual = await buscarArquivoGitHub(owner, repo, rotasPath, branch, token);
-        const resp = await enviarArquivoGitHub(
-          owner,
-          repo,
-          rotasPath,
-          branch,
-          token,
-          novoYaml,
-          "Atualiza rotas.yaml via QuackVoo Painel",
-          atual.sha
-        );
-        estado.rotasSha = resp.content?.sha || atual.sha;
-
-        if (wfPath && (estado.cronManha || estado.cronNoite)) {
-          const wfAtual = await buscarArquivoGitHub(owner, repo, wfPath, branch, token);
-          const wfTexto = base64ToUtf8(wfAtual.content);
-          const wfNovo = aplicarCronsNoWorkflow(wfTexto, estado.cronManha, estado.cronNoite);
-          if (wfNovo !== wfTexto) {
-            const wfResp = await enviarArquivoGitHub(
-              owner,
-              repo,
-              wfPath,
-              branch,
-              token,
-              wfNovo,
-              "Atualiza horários do workflow via QuackVoo Painel",
-              wfAtual.sha
-            );
-            estado.workflowSha = wfResp.content?.sha || wfAtual.sha;
-            estado.workflowContent = wfNovo;
-          }
-        }
-
-        mostrarStatus("Salvo e commitado no GitHub com sucesso!", "ok");
-      } catch (e) {
-        mostrarStatus(e.message, "err");
-      }
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    function escapeAttr(str) {
-      return escapeHtml(str).replace(/'/g, "&#39;");
-    }
-
-    carregarConexaoLocal();
-    sincronizarFormularioComEstado();
-  </script>
+// ---------- início ----------
+$("aeros").innerHTML = AEROS.map(([c,n])=>`<option value="${c}">${esc(n)}</option>`).join("");
+window.conectar = conectar; window.esquecer = esquecer; window.novaRota = novaRota; window.salvar = salvar;
+const salvo = lerLocal();
+const [donoPages, repoPages] = [location.hostname.split(".github.io")[0], location.pathname.split("/")[1]];
+$("ghOwner").value = salvo.owner || (location.hostname.endsWith("github.io") ? donoPages : "");
+$("ghRepo").value = salvo.repo || (location.hostname.endsWith("github.io") ? repoPages : "");
+$("ghToken").value = salvo.token || "";
+if ($("ghOwner").value && $("ghRepo").value) conectar();
+}
+</script>
 </body>
 </html>

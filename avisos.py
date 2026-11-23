@@ -82,3 +82,48 @@ def email(assunto: str, html: str, texto: str) -> str:
         smtp.sendmail(usuario, [destino], msg.as_string())
 
     return f"E-mail enviado para {destino}."
+
+
+# ---------------------------------------------------------------- relatório como imagem
+def html_para_png(html: str, largura: int = 420) -> bytes:
+    """Desenha o HTML do relatório (o mesmo do e-mail) numa imagem PNG nítida."""
+    from playwright.sync_api import sync_playwright
+
+    pagina = (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        "<style>body{margin:0;background:#fff;padding:14px 12px 8px;"
+        "font-family:Arial,'Liberation Sans','Noto Color Emoji',sans-serif}</style></head>"
+        f"<body>{html}</body></html>"
+    )
+    with sync_playwright() as p:
+        nav = p.chromium.launch()
+        pg = nav.new_page(viewport={"width": largura, "height": 800}, device_scale_factor=2)
+        pg.set_content(pagina, wait_until="load")
+        png = pg.screenshot(full_page=True)
+        nav.close()
+    return png
+
+
+def telegram_foto(png: bytes, legenda: str, botoes: list[list[tuple[str, str]]]) -> str:
+    """Manda a imagem com legenda e botões de link (imagem não tem link clicável)."""
+    import json, uuid
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        raise RuntimeError("Faltam os segredos TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID.")
+
+    teclado = {"inline_keyboard": [[{"text": t, "url": u} for t, u in linha] for linha in botoes if linha]}
+    campos = {"chat_id": chat_id, "caption": legenda[:1024], "parse_mode": "HTML", "reply_markup": json.dumps(teclado)}
+    fronteira = uuid.uuid4().hex
+    corpo = b""
+    for k, v in campos.items():
+        corpo += f"--{fronteira}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode()
+    corpo += (f"--{fronteira}\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"quackvoo.png\"\r\n"
+              "Content-Type: image/png\r\n\r\n").encode() + png + f"\r\n--{fronteira}--\r\n".encode()
+    req = request.Request(f"https://api.telegram.org/bot{token}/sendPhoto", data=corpo, method="POST",
+                          headers={"Content-Type": f"multipart/form-data; boundary={fronteira}"})
+    with request.urlopen(req, timeout=60) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"Telegram retornou HTTP {resp.status} ao enviar a imagem.")
+    return "Telegram: imagem enviada."

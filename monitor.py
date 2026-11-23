@@ -285,6 +285,37 @@ def conferir_horarios(res: dict):
     c["horarios"] = h
 
 
+def legenda_e_botoes(r: dict, motivos: list[str]) -> tuple[str, list[list[tuple[str, str]]]]:
+    """Legenda curta da foto + botões com os links (Google Voos e escalas)."""
+    if "melhor" not in r:
+        return f"⚠️ <b>{r['nome']}</b>: {'; '.join(r['erros'])}", []
+    m = r["melhor"]
+    legenda = f"✈️ <b>{r['nome']}</b> · <b>{A.reais(m['preco'])}</b> saindo {A.br(m['dia'])}\n" + "\n".join(motivos)
+    botoes = [[(f"🔎 Abrir {A.br(m['dia'])} no Google Voos", m["url"])]]
+    top = sorted(r["calendario"].items(), key=lambda kv: kv[1]["preco"])[1:5]
+    if top:
+        botoes.append([(f"{A.d(k).strftime('%d/%m')} · {A.reais(v['preco'])}", v["url"]) for k, v in top[:2]])
+        botoes.append([(f"{A.d(k).strftime('%d/%m')} · {A.reais(v['preco'])}", v["url"]) for k, v in top[2:4]])
+    c = r.get("conexao")
+    if c and c.get("economia", 0) > 0 and "p1" in (c.get("ida") or {}):
+        ida, hub = c["ida"], c["hub"]
+        botoes.append([(f"🔀 {r['origem']}→{hub} {A.d(c['dia']).strftime('%d/%m')}", ida["p1"]["url"]),
+                       (f"{hub}→{r['destino']} {A.d(ida['data2']).strftime('%d/%m')}", ida["p2"]["url"])])
+    return legenda, botoes
+
+
+def enviar_telegram(avisar: list[tuple[dict, list[str]]]) -> None:
+    """Um relatório-imagem por rota, igual ao do e-mail. Se não der para desenhar, manda em texto."""
+    for res, motivos in avisar:
+        try:
+            _, html, _ = montar([(res, motivos)])
+            legenda, botoes = legenda_e_botoes(res, motivos)
+            print(avisos.telegram_foto(avisos.html_para_png(html), legenda, botoes))
+        except Exception as e:
+            print(f"imagem falhou ({e}); mandando em texto")
+            print(avisos.telegram(montar_telegram([(res, motivos)])))
+
+
 # ---------------------------------------------------------------- principal
 def main():
     global CFG_AV
@@ -299,7 +330,15 @@ def main():
 
     avisar = []
     for r in cfg["rotas"]:
+        if r.get("ativa") is False:
+            print(f"⏸️  {r['nome']}: pausada no painel"); continue
         h = hist.setdefault(r["nome"], {"execucoes": []})
+        # se a rota mudou (origem, destino, ida/volta, adultos), o histórico antigo não vale mais
+        assinatura = f"{r['origem']}>{r['destino']}|n{int(r.get('noites') or 0)}|a{r.get('adultos', 1)}"
+        if h.get("assinatura") != assinatura:
+            if h.get("assinatura"):
+                print(f"↺  {r['nome']}: rota mudou ({h['assinatura']} → {assinatura}), recomeçando o histórico")
+            h.clear(); h.update({"execucoes": [], "assinatura": assinatura})
         testar = FORCAR or DEMO or dia_conexoes or not h.get("conexao")
         try:
             res = analisar(r, testar)
@@ -342,9 +381,9 @@ def main():
     if CFG_AV.get("email", True):
         try: print(avisos.email(assunto, html, texto))
         except Exception as e: print("e-mail falhou:", e)
-    if CFG_AV.get("whatsapp", True):
-        try: print(avisos.whatsapp(montar_telegram(avisar)))
-        except Exception as e: print("whatsapp falhou:", e)
+    if CFG_AV.get("telegram", CFG_AV.get("whatsapp", True)):
+        try: enviar_telegram(avisar)
+        except Exception as e: print("telegram falhou:", e)
 
 
 CFG_AV: dict = {}
