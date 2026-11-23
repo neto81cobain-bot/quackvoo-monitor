@@ -21,7 +21,7 @@ label,.lbl{display:flex;flex-direction:column;gap:5px;font-size:.82rem;color:var
 input,select{width:100%;background:var(--s2);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:11px 12px;font-size:16px;outline:none}
 input:focus,select:focus{border-color:var(--ac)}
 button{font:inherit;cursor:pointer}
-.btn{border:1px solid transparent;border-radius:11px;padding:11px 14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px}
+.btn{text-decoration:none;border:1px solid transparent;border-radius:11px;padding:11px 14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px}
 .pri{background:var(--ac);color:#061224}.go{background:var(--ok);color:#052010}
 .gh{background:var(--s2);color:var(--tx);border-color:var(--bd)}
 .dang{background:rgba(239,68,68,.12);color:#fca5a5;border-color:rgba(239,68,68,.4)}
@@ -71,18 +71,33 @@ textarea{width:100%;min-height:220px;background:var(--s2);color:var(--tx);border
   </header>
   <div id="msg"></div>
 
-  <section class="card" id="conexao">
-    <h2>Conexão com o GitHub</h2>
-    <div class="grid">
-      <label>Dono do repositório<input id="ghOwner" placeholder="neto81cobain-bot" autocomplete="off"></label>
-      <label>Repositório<input id="ghRepo" placeholder="quackvoo-monitor" autocomplete="off"></label>
-      <label>Token (github_pat_…)<input id="ghToken" type="password" autocomplete="off"></label>
+  <section class="card" id="conexao" hidden>
+    <h2>Liberar para salvar</h2>
+    <p class="hint" style="margin-top:0">Ver as rotas não precisa de nada. Para <b>salvar</b>, o painel precisa de um token seu, uma vez por aparelho (fica guardado só aqui).</p>
+    <ol class="hint" style="padding-left:18px;line-height:1.7">
+      <li>Toque em <b>Criar token</b>: abre o GitHub com tudo preenchido.</li>
+      <li>Em <b>Repository access</b>, escolha <b>Only select repositories → quackvoo-monitor</b>.</li>
+      <li>Toque em <b>Generate token</b>, copie e cole abaixo.</li>
+    </ol>
+    <div class="row">
+      <a class="btn gh" id="linkToken" target="_blank" rel="noopener">Criar token ↗</a>
     </div>
+    <label style="margin-top:12px">Token (github_pat_…)<input id="ghToken" type="password" autocomplete="off" placeholder="cole aqui"></label>
     <div class="row" style="margin-top:12px">
-      <button class="btn pri" onclick="conectar()">Conectar e carregar</button>
+      <button class="btn pri" onclick="conectar()">Salvar token</button>
       <button class="btn gh sm" onclick="esquecer()">Esquecer token</button>
     </div>
-    <p class="hint">Token <b>fine-grained</b> só deste repositório, com <b>Contents: Read and write</b> (salvar) e <b>Actions: Read and write</b> (botão “Rodar agora”). Fica guardado só neste aparelho.</p>
+    <details style="margin-top:12px"><summary>Outro repositório</summary>
+      <div class="grid" style="margin-top:10px">
+        <label>Dono<input id="ghOwner" autocomplete="off"></label>
+        <label>Repositório<input id="ghRepo" autocomplete="off"></label>
+      </div>
+    </details>
+  </section>
+  <section class="card" id="atualizacao" hidden style="border-color:rgba(245,158,11,.6)">
+    <h2>⚠️ Falta um ajuste no monitor</h2>
+    <p class="hint" style="margin-top:0" id="atualizacaoTxt"></p>
+    <button class="btn pri" onclick="corrigirWorkflow()">Corrigir agora</button>
   </section>
 
   <section id="app" hidden>
@@ -148,6 +163,8 @@ const DIAS = ["segunda","terca","quarta","quinta","sexta","sabado","domingo"];
 const ROTULO_DIA = {segunda:"segunda",terca:"terça",quarta:"quarta",quinta:"quinta",sexta:"sexta",sabado:"sábado",domingo:"domingo",nunca:"nunca"};
 const CHAVE = "quackvoo_painel_v2";
 const WF = ".github/workflows/quackvoo.yml";
+const DONO = "neto81cobain-bot", REPO = "quackvoo-monitor";
+const PASSO_NAVEGADOR = "      - name: Navegador para desenhar o relatório\n        run: python -m playwright install --with-deps chromium\n";
 const hojeISO = () => new Date().toISOString().slice(0,10);
 const maisDias = (iso,n) => { const d = new Date(iso+"T12:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
 const diasEntre = (a,b) => Math.round((new Date(b+"T12:00") - new Date(a+"T12:00"))/864e5);
@@ -183,7 +200,8 @@ const gravarArq = (p, texto, sha, m) => gh(`contents/${p}`, { method:"PUT", body
 
 async function conectar(){
   const c = con();
-  if (!c.owner || !c.repo) return msg("Preencha o dono e o nome do repositório.","err");
+  if (!c.owner) $("ghOwner").value = c.owner = DONO;
+  if (!c.repo) $("ghRepo").value = c.repo = REPO;
   gravarLocal(c);
   try {
     msg("Carregando…");
@@ -192,15 +210,44 @@ async function conectar(){
     cfg.rotas = Array.isArray(cfg.rotas) ? cfg.rotas : [];
     cfg.avisos = cfg.avisos || {};
     try { const w = await lerArq(WF); wfTexto = { sha:w.sha, texto:w.texto }; } catch { wfTexto = null; }
+    let extraviado = null; try { extraviado = (await gh("contents/workflows/quackvoo.yml")).sha; } catch {}
+    verificarWorkflow(extraviado);
     try { historico = JSON.parse((await lerArq("dados/historico.json")).texto); } catch { historico = {}; }
     carregado = true;
-    $("app").hidden = false; $("barra").hidden = !c.token; $("conexao").hidden = !!c.token;
-    $("badge").textContent = `${c.owner}/${c.repo}${c.token?"":" · só leitura"}`; $("badge").className = "badge on";
+    $("app").hidden = false; $("barra").hidden = false; $("conexao").hidden = !!c.token;
+    $("badge").textContent = c.token ? "pronto para salvar" : "só leitura"; $("badge").className = "badge" + (c.token ? " on" : "");
     preencherAvisos(); render();
-    msg(c.token ? `${cfg.rotas.length} rota(s) carregada(s).` : "Carregado só para ver: coloque o token para salvar.", c.token?"ok":"err");
+    $("msg").className = "";
   } catch(e){ msg(e.message,"err"); }
 }
-function esquecer(){ $("ghToken").value=""; gravarLocal(con()); $("conexao").hidden=false; $("barra").hidden=true; msg("Token apagado deste aparelho."); }
+function esquecer(){ $("ghToken").value=""; gravarLocal(con()); $("conexao").hidden=false; $("badge").textContent="só leitura"; $("badge").className="badge"; msg("Token apagado deste aparelho."); }
+
+// ---------- ajuste do workflow (passo do navegador que desenha a imagem do Telegram) ----------
+let wfExtraviado = null;
+function verificarWorkflow(extraviado){
+  wfExtraviado = extraviado;
+  const falta = wfTexto && !wfTexto.texto.includes("playwright install");
+  const partes = [];
+  if (falta) partes.push("O agendamento ainda não instala o navegador que desenha o relatório em imagem: sem isso, o Telegram recebe em texto.");
+  if (extraviado) partes.push("Tem uma cópia do agendamento na pasta errada (workflows/ na raiz), que o GitHub ignora: ela será apagada.");
+  $("atualizacao").hidden = !partes.length;
+  $("atualizacaoTxt").textContent = partes.join(" ");
+}
+async function corrigirWorkflow(){
+  if (!con().token){ $("conexao").hidden=false; $("conexao").scrollIntoView({behavior:"smooth"}); return msg("Primeiro salve o token (passo abaixo).","err"); }
+  try {
+    if (wfTexto && !wfTexto.texto.includes("playwright install")){
+      const novo = wfTexto.texto.replace(/(      - run: pip install -r requirements\.txt\n)/, `$1${PASSO_NAVEGADOR}`);
+      if (novo === wfTexto.texto) throw new Error("Não achei onde colocar o passo no workflow.");
+      const w = await gravarArq(WF, novo, wfTexto.sha, "Instala o navegador do relatório em imagem (QuackVoo Painel)");
+      wfTexto = { sha:w.content.sha, texto:novo };
+    }
+    if (wfExtraviado){
+      await gh("contents/workflows/quackvoo.yml", { method:"DELETE", body:JSON.stringify({ message:"Remove cópia do workflow na pasta errada", sha:wfExtraviado }) });
+    }
+    verificarWorkflow(null); msg("Monitor ajustado! O próximo relatório chega em imagem. 🦆");
+  } catch(e){ msg(e.message + (/403/.test(e.message) ? " — o token precisa da permissão Workflows: Read and write." : ""),"err"); }
+}
 
 // ---------- horários (Brasília ↔ cron UTC) ----------
 function cronsDoWorkflow(){
@@ -373,7 +420,8 @@ function atualizarRodape(){
 
 // ---------- salvar ----------
 async function salvar(rodar){
-  if (!carregado) return msg("Carregue as rotas do GitHub antes de salvar.","err");
+  if (!carregado) return msg("Ainda carregando as rotas, tente em instantes.","err");
+  if (!con().token){ $("conexao").hidden=false; $("conexao").scrollIntoView({behavior:"smooth"}); return msg("Para salvar, cole seu token uma vez (passo abaixo).","err"); }
   const problemas = cfg.rotas.flatMap((r,i)=>avisosDaRota(r).filter(a=>!a.startsWith("Período longo")).map(a=>`${r.origem}→${r.destino}: ${a}`));
   if (problemas.some(p=>/Escolha|iguais|antes da inicial/.test(p))) return msg("Corrija antes de salvar: "+problemas.join(" · "),"err");
   try {
@@ -399,13 +447,15 @@ async function salvar(rodar){
 
 // ---------- início ----------
 $("aeros").innerHTML = AEROS.map(([c,n])=>`<option value="${c}">${esc(n)}</option>`).join("");
-window.conectar = conectar; window.esquecer = esquecer; window.novaRota = novaRota; window.salvar = salvar;
+window.conectar = conectar; window.esquecer = esquecer; window.novaRota = novaRota; window.salvar = salvar; window.corrigirWorkflow = corrigirWorkflow;
 const salvo = lerLocal();
-const [donoPages, repoPages] = [location.hostname.split(".github.io")[0], location.pathname.split("/")[1]];
-$("ghOwner").value = salvo.owner || (location.hostname.endsWith("github.io") ? donoPages : "");
-$("ghRepo").value = salvo.repo || (location.hostname.endsWith("github.io") ? repoPages : "");
+$("ghOwner").value = salvo.owner || DONO;
+$("ghRepo").value = salvo.repo || REPO;
 $("ghToken").value = salvo.token || "";
-if ($("ghOwner").value && $("ghRepo").value) conectar();
+$("linkToken").href = "https://github.com/settings/personal-access-tokens/new?" + new URLSearchParams({
+  name:"QuackVoo Painel", description:"Salvar rotas e rodar o monitor pelo painel", target_name:DONO, expires_in:"365",
+  contents:"write", actions:"write", workflows:"write" });
+conectar();
 }
 </script>
 </body>
