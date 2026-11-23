@@ -3,7 +3,7 @@ avisos:
   resumo_semanal: domingo
   conexoes_toda: segunda
   email: false
-  whatsapp: true
+  telegram: true
 rotas:
   - nome: Manaus -> Santa Cruz (Inverno)
     origem: MAO
@@ -20,6 +20,8 @@ rotas:
       - VCP
       - BSB
       - CGB
+      - CGH
+      - STM
     conexao_dias:
       - 0
       - 1
