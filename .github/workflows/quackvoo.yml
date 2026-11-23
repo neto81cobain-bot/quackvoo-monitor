@@ -2,8 +2,8 @@ name: QuackVoo Monitor 🦆✈️
 
 on:
   schedule:
-    - cron: "0 8 * * *"   # 08h07 da manhã (horário de Brasília)
-    - cron: "23 14 * * *"    # 21h00 da noite (horário de Brasília)
+    - cron: "0 13 * * *"   # 08h07 da manhã (horário de Brasília)
+    - cron: "0 21 * * *"    # 21h00 da noite (horário de Brasília)
   workflow_dispatch:         # botão "Run workflow" para rodar na hora
     inputs:
       forcar:
