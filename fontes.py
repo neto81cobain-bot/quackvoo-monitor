@@ -1,5 +1,5 @@
 """De onde vêm os preços: calendário do Google Voos (Apify) e detalhes do voo (SerpAPI)."""
-import json, os, time
+import json, os, re, time
 from datetime import date, timedelta
 import requests
 
@@ -174,8 +174,39 @@ def detalhes_voo(origem: str, destino: str, data: str, adultos: int, chave: str,
     return {
         "preco": v["price"], "cia": ", ".join(sorted({f.get("airline", "?") for f in v["flights"]})),
         "saida": ini["departure_airport"]["time"], "chegada": fim["arrival_airport"]["time"],
-        "paradas": len(v["flights"]) - 1, "google": google, "url": d.get("search_metadata", {}).get("google_flights_url") or url_google(origem, destino, data),
+        "paradas": len(v["flights"]) - 1, "google": google, "booking_token": v.get("booking_token"), "url": d.get("search_metadata", {}).get("google_flights_url") or url_google(origem, destino, data),
     }
+
+
+def onde_comprar(origem: str, destino: str, data: str, adultos: int, chave: str, booking_token: str | None) -> list[dict]:
+    """Quem vende o voo mais barato e por quanto (companhia, Decolar, Trip.com…), com link direto. Gasta 1 busca."""
+    if not (chave and booking_token):
+        return []
+    p = {"engine": "google_flights", "departure_id": origem, "arrival_id": destino, "outbound_date": data, "type": 2,
+         "adults": adultos, "currency": "BRL", "hl": "pt", "gl": "br", "booking_token": booking_token, "api_key": chave}
+    try:
+        d = requests.get("https://serpapi.com/search.json", params=p, timeout=60).json()
+    except (requests.RequestException, ValueError):
+        return []
+    pagina_google = d.get("search_metadata", {}).get("google_flights_url")
+    out = []
+    for o in d.get("booking_options") or []:
+        t = o.get("together") or o.get("departing") or o
+        preco = t.get("price")
+        req = t.get("booking_request") or {}
+        if req.get("url") and req.get("post_data"):
+            url = req["url"] + ("&" if "?" in req["url"] else "?") + req["post_data"]
+        else:
+            url = t.get("booking_link") or t.get("link") or pagina_google
+        nome = re.sub(r"^(Reserve com a?|Book with)\s*", "", str(t.get("book_with") or t.get("option_title") or "Vendedor")).strip()
+        if url and (preco or nome):
+            out.append({"vendedor": nome, "preco": preco, "url": url, "separados": bool(o.get("separate_tickets"))})
+    out.sort(key=lambda x: x["preco"] or 1e12)
+    vistos, unicos = set(), []
+    for x in out:  # um por vendedor
+        if x["vendedor"].lower() not in vistos:
+            vistos.add(x["vendedor"].lower()); unicos.append(x)
+    return unicos
 
 
 # ---------------------------------------------------------------- créditos

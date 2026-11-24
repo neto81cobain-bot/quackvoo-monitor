@@ -27,4 +27,4 @@ jobs:
           ROTA: ${{ inputs.rota }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: |
-          if [ "$ROTA" = "monitor" ]; then python monitor.py --teste; else python comparar_fontes.py $ROTA ${{ inputs.apify && ' ' || '--sem-apify' }}; fi
+          if [ "$ROTA" = "links" ]; then python testar_links.py; elif [ "$ROTA" = "monitor" ]; then python monitor.py --teste; else python comparar_fontes.py $ROTA ${{ inputs.apify && ' ' || '--sem-apify' }}; fi

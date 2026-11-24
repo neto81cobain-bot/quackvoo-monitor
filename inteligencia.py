@@ -250,3 +250,41 @@ def url_grafico(h: dict, titulo: str) -> str | None:
                          "borderColor": "#16A34A", "backgroundColor": "rgba(22,163,74,0.15)", "pointRadius": 2}]},
            "options": {"title": {"display": True, "text": titulo}, "legend": {"display": False}}}
     return "https://quickchart.io/chart?bkg=white&w=600&h=320&c=" + quote(json.dumps(cfg, separators=(",", ":")))
+
+
+# ---------------------------------------------------------------- todos os sites pra conferir o mesmo voo
+AVISO_RJ = "⚠️ em recuperação judicial"
+
+
+def links_sites(o: str, dst: str, dia: str, noites: int = 0, adultos: int = 1) -> dict[str, list[tuple[str, str, str]]]:
+    """Busca pronta da mesma data em buscadores, agências e companhias. Retorna {grupo: [(nome, url, nota)]}."""
+    from urllib.parse import quote
+    d1 = A.d(dia)
+    d2 = d1 + timedelta(days=noites) if noites else None
+    ow = not d2
+    us = lambda d: f"{d.month}/{d.day}/{d.year}"
+    br_ = lambda d: d.strftime("%d-%m-%Y")
+    g = {}
+    g["Buscadores"] = [
+        ("Google Voos", f"https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=" + quote(f"Flights from {o} to {dst} on {d1}" + (f" returning {d2}" if d2 else " one way")), ""),
+        *[(n, u, "") for n, u in links_comparar(o, dst, dia, noites, adultos)],
+        ("Momondo", f"https://www.momondo.com.br/flight-search/{o}-{dst}/{d1}" + (f"/{d2}" if d2 else "") + (f"/{adultos}adults" if adultos > 1 else "") + "?sort=price_a", ""),
+        ("Kiwi", f"https://www.kiwi.com/deep?from={o}&to={dst}&departure={br_(d1)}" + (f"&return={br_(d2)}" if d2 else "&return=no-return") + f"&adults={adultos}&currency=BRL&lang=pt", ""),
+    ]
+    g["Agências"] = [
+        ("Decolar", f"https://www.decolar.com/shop/flights/results/{'oneway' if ow else 'roundtrip'}/{o}/{dst}/{d1}" + ("" if ow else f"/{d2}") + f"/{adultos}/0/0", ""),
+        ("Trip.com", f"https://br.trip.com/flights/showfarefirst?dcity={o.lower()}&acity={dst.lower()}&ddate={d1}" + (f"&rdate={d2}&triptype=rt" if d2 else "&triptype=ow") + f"&class=y&quantity={adultos}&locale=pt-BR&curr=BRL", ""),
+        ("Expedia", f"https://www.expedia.com.br/Flights-Search?trip={'oneway' if ow else 'roundtrip'}&leg1=from:{o},to:{dst},departure:{us(d1)}TANYT"
+                    + (f"&leg2=from:{dst},to:{o},departure:{us(d2)}TANYT" if d2 else "") + f"&passengers=adults:{adultos},children:0,infantinlap:N&mode=search&options=sortby:price", ""),
+        ("MaxMilhas", f"https://www.maxmilhas.com.br/busca-passagens-aereas/{'OW' if ow else 'RT'}/{o}/{dst}/{d1}" + ("" if ow else f"/{d2}") + f"/{adultos}/0/0/EC", AVISO_RJ),
+        ("123milhas", f"https://123milhas.com/v2/busca?de={o}&para={dst}&adultos={adultos}&criancas=0&bebes=0&ida={br_(d1)}" + (f"&volta={br_(d2)}" if d2 else "") + "&classe=3", AVISO_RJ),
+    ]
+    g["Companhias"] = [
+        ("LATAM", f"https://www.latamairlines.com/br/pt/oferta-voos?origin={o}&outbound={d1}T15%3A00%3A00.000Z&destination={dst}"
+                  + (f"&inbound={d2}T15%3A00%3A00.000Z&trip=RT" if d2 else "&inbound=null&trip=OW") + f"&adt={adultos}&chd=0&inf=0&cabin=Economy&redemption=false&sort=RECOMMENDED", ""),
+        ("Azul", f"https://www.voeazul.com.br/br/pt/home/selecao-voo?c[0].ds={o}&c[0].std={d1:%m/%d/%Y}&c[0].as={dst}"
+                 + (f"&c[1].ds={dst}&c[1].std={d2:%m/%d/%Y}&c[1].as={o}" if d2 else "") + f"&p[0].t=ADT&p[0].c={adultos}&p[0].cp=false&f.dl=3&f.dr=3&cc=BRL", ""),
+        ("GOL", f"https://b2c.voegol.com.br/compra/busca-parceiros?pv=br&tipo={'DF' if ow else 'RT'}&de={o}&para={dst}&ida={br_(d1)}" + (f"&volta={br_(d2)}" if d2 else "") + f"&ADT={adultos}&CHD=0&INF=0", ""),
+        ("Boliviana (BoA)", "https://www.boa.bo/", "site da cia, busque a data"),
+    ]
+    return g
