@@ -32,6 +32,16 @@ class ErroBarco(Exception):
     pass
 
 
+WA_YJARA, WA_NAVEGAM = "5593991893803", "5592988552157"
+
+
+def wa(n) -> str:
+    d = re.sub(r"\D", "", str(n or ""))
+    if not d:
+        return ""
+    return "https://wa.me/" + ("55" + d if len(d) <= 11 else d)
+
+
 def slug(cidade: str) -> str:
     s = sem_acento(cidade).strip().replace("/pa", "").replace("/am", "").replace("/ap", "")
     s = APELIDOS.get(s, s)
@@ -149,6 +159,7 @@ def navegam(origem: str, destino: str, inicio: date, dias: int) -> dict[str, lis
                 "empresa": "Navegam", "trecho": f"{x['origin']['name']} x {x['destination']['name']}",
                 "horario": sai.strftime("%d/%m/%Y %H:%M"), "saida": x["departure_date"], "duracao": dur,
                 "preco": float(x.get("sale_cost") or x.get("transportation_cost") or 0), "comida": float(comida),
+                "zap": wa((x.get("boat") or {}).get("whatsapp_sale") or (x.get("boat") or {}).get("phone")),
                 "url": f"https://navegam.com.br/busca?origem={o}&destino={d}&ida={dia}&type=ida&passageiros=1", "fonte": "Navegam"})
         if len(dd) < 10 or (dd and datetime.fromisoformat(dd[-1]["departure_date"].replace("Z", "+00:00")).date() > fim):
             break
@@ -192,12 +203,32 @@ def _rs(v: float) -> str:
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".").replace(",00", "")
 
 
-def texto(origem: str, destino: str, saidas: dict[str, list[dict]]) -> str:
+def contatos(agenda, o: str, d: str) -> list[dict]:
+    o, d = slug(o), slug(d)
+    out = []
+    for c in agenda or []:
+        a, b = slug(c.get("de", "")), slug(c.get("para", "") or "")
+        if {a, b} == {o, d} or (not b and a in (o, d)):
+            out.append(c)
+    return out
+
+
+def _rodape(origem, destino, agenda) -> str:
+    L = []
+    ag = contatos(agenda, origem, destino)
+    if ag:
+        L += ["", "📒 <b>Também pergunte</b>"] + [f" {c['nome']} · <a href=\"{wa(c['whatsapp'])}\">WhatsApp</a>" for c in ag[:6]]
+    L += ["", f"<i>Toque no preço pra comprar. Dúvida: <a href=\"{wa(WA_YJARA)}\">Yjara</a> · <a href=\"{wa(WA_NAVEGAM)}\">Navegam</a></i>"]
+    return "\n".join(L)
+
+
+def texto(origem: str, destino: str, saidas: dict[str, list[dict]], agenda=None) -> str:
     """Mensagem do Telegram: por dia, cada saída com lancha, empresa, horário e preço (o preço abre a compra)."""
     nome_o, nome_d = nome(slug(origem)), nome(slug(destino))
     if not saidas:
         return (f"🚤 <b>{nome_o} → {nome_d}</b>\nNão achei saídas à venda online nesses dias.\n"
-                "<i>Procurei na Yjara e na Navegam. Algumas lanchas só vendem no porto ou pelas redes. A venda online abre, por regra da ANTAQ, pelo menos 5 dias antes.</i>")
+                "<i>Procurei na Yjara e na Navegam. A venda online costuma abrir 5 dias antes; lancha pequena vende no porto ou pelo WhatsApp.</i>"
+                + _rodape(origem, destino, agenda))
     todos = [v for vs in saidas.values() for v in vs]
     menor = min(todos, key=lambda v: v["preco"])
     L = [f"🚤 <b>{nome_o} → {nome_d}</b>", f"<i>{len(todos)} saídas · a partir de {_rs(menor['preco'])}</i>", ""]
@@ -213,8 +244,8 @@ def texto(origem: str, destino: str, saidas: dict[str, list[dict]]) -> str:
             barato = " 💚" if v["preco"] == menor["preco"] else ""
             via = f"\n      <i>passa por {', '.join(v['via'])}</i>" if v.get("via") else ""
             comida = f" (+{_rs(v['comida'])} comida)" if v.get("comida") else ""
+            zap = f" · <a href=\"{v['zap']}\">WhatsApp</a>" if v.get("zap") else ""
             L.append(f"  {hora} · {v['embarcacao'] or v['tipo']} <i>({v['empresa'] or v['tipo']})</i> · "
-                     f"<a href=\"{v['url']}\">{_rs(v['preco'])}</a>{comida}{barato}{extra}{via}")
+                     f"<a href=\"{v['url']}\">{_rs(v['preco'])}</a>{comida}{barato}{extra}{zap}{via}")
         L.append("")
-    L.append("<i>Toque no preço pra comprar (Yjara ou Navegam). Lanchas que só vendem no porto ou nas redes não aparecem aqui.</i>")
-    return "\n".join(L)
+    return "\n".join(L).rstrip() + "\n" + _rodape(origem, destino, agenda)

@@ -36,7 +36,8 @@ BRT = timezone(timedelta(hours=-3))
 TUDO = "--tudo" in sys.argv
 AGORA = datetime.now(timezone.utc)
 HOJE = AGORA.astimezone(BRT).date()
-VERSAO_COMANDOS = 6
+VERSAO_COMANDOS = 7
+WORKER = os.getenv("WORKER_URL", "https://quackvoo.quackvoo-neto.workers.dev")
 
 cfg = yaml.safe_load(ROTAS.read_text(encoding="utf-8")) or {}
 cfg.setdefault("rotas", []); cfg.setdefault("avisos", {})
@@ -324,26 +325,20 @@ def saude():
 
 
 # ---------------------------------------------------------------- 5. comandos do Telegram
-AJUDA = """<b>Comandos do QuackVoo</b> 🦆
-/status — preços, recorde e créditos
-/rotas — suas rotas (com número)
-/agora — busca completa agora
+AJUDA = """<b>QuackVoo</b> 🦆
+Toque em /menu: tem botão pra tudo (avião, barco e lancha, promoções).
+
+<b>Se preferir digitar</b>
+/status · /agora · /promos · /radar
 /buscar MAO VVI 29/05 [05/06] — preço de uma data
-/promos — últimas promoções achadas
-/alvo 1 1800 — muda o preço-alvo
-/pausar 1 [7] · /ativar 1 — pausa (por 7 dias) / reativa
-/radar — Radar do Norte: destinos baratos saindo daqui
-/comprei 1 1172 29/05 — vigia 24 h pra ver se cai mais
-🚤 <b>Barco e lancha</b>
-/barco Oriximiná Santarém [12/12] — saídas, horários e preços
-/vigiarbarco Oriximiná Santarém — avisa saída nova e queda de preço
-/barcos · /pararbarco 1 — trechos vigiados
-<i>Criar, apagar ou editar rotas: no painel. Se tiver só uma rota, o número é opcional. Respondo em ~1 min (com o Worker da Cloudflare) ou até ~15 min sem ele.</i>"""
-COMANDOS_MENU = [("status", "Preços, recorde e créditos"), ("agora", "Busca completa agora"), ("buscar", "Preço de uma data: MAO VVI 29/05"),
-                 ("promos", "Últimas promoções"),
-                 ("rotas", "Suas rotas"), ("radar", "Destinos baratos saindo do Norte"), ("alvo", "Muda o preço-alvo"), ("pausar", "Pausa uma rota"), ("ativar", "Reativa uma rota"),
-                 ("comprei", "Vigia 24 h depois da compra"), ("barco", "Barco/lancha: /barco Oriximiná Santarém"),
-                 ("vigiarbarco", "Vigiar trecho de barco"), ("barcos", "Trechos de barco vigiados"), ("ajuda", "Todos os comandos")]
+/alvo 1 1800 · /pausar 1 7 · /ativar 1
+/comprei 1 1172 29/05 — vigia 24 h depois da compra
+/barco Oriximiná Santarém [12/12] — ou só escreva <code>Oriximiná Santarém</code>
+/vigiarbarco Oriximiná Santarém · /barcos · /pararbarco 1
+/agenda — contatos de lanchas (WhatsApp)"""
+
+COMANDOS_MENU = [("menu", "Menu com botões"), ("status", "Preços de avião agora"), ("barco", "Barco/lancha: /barco Oriximiná Santarém"),
+                 ("promos", "Últimas promoções"), ("ajuda", "Comandos digitados")]
 
 
 def data_arg(s: str) -> str:
@@ -465,7 +460,7 @@ def cmd(texto: str) -> None:
         elif c == "barco":
             o, d, dia = trecho_arg(args)
             saidas = barcos.proximos(o, d, 3 if dia else 7, dia, paradas=True)
-            enviar(barcos.texto(o, d, saidas))
+            enviar(barcos.texto(o, d, saidas, cfg.get("agenda")))
         elif c == "vigiarbarco":
             o, d, _ = trecho_arg(args)
             lista = cfg.setdefault("barcos", [])
@@ -487,6 +482,21 @@ def cmd(texto: str) -> None:
                 raise ValueError("use /pararbarco 1 (veja o número em /barcos)")
             b = lista.pop(int(args[0]) - 1); salvar_rotas()
             enviar(f"Parei de vigiar {barcos.nome(b['de'])} → {barcos.nome(b['para'])}.")
+        elif c == "agenda":
+            ag = cfg.setdefault("agenda", [])
+            if args and args[0] == "add" and len(args) >= 5:
+                fone, de, para, nome_c = re.sub(r"\D", "", args[1]), barcos.slug(args[2]), args[3], " ".join(args[4:])
+                c_ = {"nome": nome_c[:60], "whatsapp": fone, "de": de}
+                if para != "-": c_["para"] = barcos.slug(para)
+                if not any(x.get("whatsapp") == fone and x.get("de") == de and x.get("para") == c_.get("para") for x in ag):
+                    ag.append(c_); salvar_rotas()
+                return  # o Worker já confirmou na hora
+            if args and args[0] in ("apagar", "del") and len(args) > 1 and args[1].isdigit() and 1 <= int(args[1]) <= len(ag):
+                x = ag.pop(int(args[1]) - 1); salvar_rotas()
+                enviar(f"🗑 Tirei {x['nome']} da agenda.", [[("📒 Agenda", "m:ag"), ("🏠 Menu", "m")]]); return
+            enviar("📒 <b>Agenda de lanchas</b>\n" + ("\n".join(f"{i}. {x['nome']} · {barcos.nome(x['de'])}" + (f" ↔ {barcos.nome(x['para'])}" if x.get("para") else "")
+                   + f" · <a href=\"{barcos.wa(x['whatsapp'])}\">WhatsApp</a>" for i, x in enumerate(ag, 1)) or "Vazia.")
+                   + "\n\nAdicionar: escreva <code>Lancha Fulano, 93 99999-9999, Oriximiná, Santarém</code>")
         elif c == "radar":
             txt = radar.texto_resumo(est)
             enviar(txt or "🌴 O Radar do Norte ainda não rodou. A primeira varredura sai em até 4 h.")
@@ -549,6 +559,30 @@ def ligar_webhook() -> bool:
     except Exception as e:
         print("setWebhook falhou:", e)
     return True
+
+
+def registrar_worker(forcar=False):
+    """Manda pro Worker da Cloudflare o token do bot e o resumo das configurações (pro menu responder na hora).
+    Prova que é este repositório com o token OIDC do GitHub; o Worker guarda num cofre (KV)."""
+    import hashlib
+    u, t = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL"), os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+    if not (u and t and CHAT):
+        return
+    dados = {"bot": os.getenv("TELEGRAM_BOT_TOKEN", "").strip(), "chat": CHAT,
+             "rotas": [{k: r.get(k) for k in ("nome", "origem", "destino", "preco_alvo", "ativa", "pausada_ate")} for r in cfg["rotas"]],
+             "barcos": cfg.get("barcos") or [], "agenda": cfg.get("agenda") or []}
+    marca = hashlib.sha256(json.dumps(dados, sort_keys=True, default=str).encode()).hexdigest()[:16]
+    if not forcar and est.get("worker_marca") == marca and minutos_desde("worker_t") < 360:
+        return
+    try:
+        jwt = requests.get(u + "&audience=quackvoo", headers={"Authorization": "bearer " + t}, timeout=20).json()["value"]
+        r = requests.post(WORKER + "/registrar", json=json.loads(json.dumps(dados, default=str)), headers={"Authorization": "Bearer " + jwt}, timeout=20)
+        if r.ok:
+            est["worker_marca"], est["worker_t"] = marca, iso(AGORA)
+        else:
+            print("registrar no worker:", r.status_code, r.text[:100])
+    except Exception as e:
+        print("registrar no worker:", e)
 
 
 def reativar_pausas():
@@ -670,8 +704,8 @@ def vigiar_barcos():
                          f"<a href=\"{v['url']}\">{barcos._rs(v['preco'])}</a>")
             for dia, v, antes in caiu[:4]:
                 L.append(f"📉 {A.d(dia):%d/%m} {v['horario'][-5:]} · {v['embarcacao']} · <a href=\"{v['url']}\">{barcos._rs(v['preco'])}</a> (era {barcos._rs(antes)})")
-            L.append("<i>Toque no preço pra comprar na Yjara.</i>")
-            enviar("\n".join(L), forte=bool(caiu) or len(novas) <= 3)
+            L.append("<i>Toque no preço pra comprar.</i>")
+            enviar("\n".join(L), [[("🔎 Ver todas as saídas", f"b|{b['de']}|{b['para']}|0"), ("🏠 Menu", "m")]], forte=bool(caiu) or len(novas) <= 3)
 
 
 def comando_do_worker() -> bool:
@@ -701,7 +735,7 @@ def main():
         tarefas = [("webhook", atualizar_webhook), ("comandos", comandos), ("pausas", reativar_pausas), ("saúde", saude),
                    ("compras", vigiar_compras), ("promoções", vigiar_promos), ("checagem rápida", checagem_rapida),
                    ("radar do norte", radar_norte), ("ofertas oficiais", ofertas_oficiais), ("barcos", vigiar_barcos), ("comandos", comandos)]
-    for nome, tarefa in tarefas:
+    for nome, tarefa in tarefas + [("worker", registrar_worker)]:
         try:
             tarefa()
         except Exception as e:

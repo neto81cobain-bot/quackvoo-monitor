@@ -149,8 +149,8 @@ def tg(metodo: str, dados: dict | None = None, timeout: int = 30) -> dict:
 def teclado(botoes: list[list[tuple[str, str]]] | None) -> dict | None:
     if not botoes:
         return None
-    # "/comando" vira botão de ação (callback); o resto é link
-    return {"inline_keyboard": [[({"text": t, "callback_data": u[:64]} if u.startswith("/") else {"text": t, "url": u}) for t, u in linha]
+    # link (http…) vira botão de abrir; o resto ("/comando", "m", "b|…") é botão de ação (callback)
+    return {"inline_keyboard": [[({"text": t, "url": u} if u.startswith(("http://", "https://", "tg://")) else {"text": t, "callback_data": u[:64]}) for t, u in linha]
                                  for linha in botoes if linha]}
 
 
