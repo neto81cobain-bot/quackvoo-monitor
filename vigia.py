@@ -23,6 +23,7 @@ import fontes
 import inteligencia as I
 import promos
 import radar
+import ofertas
 from aeroportos import nome as nome_aero
 
 AQUI = Path(__file__).parent
@@ -597,6 +598,23 @@ def radar_norte():
             enviar(txt)
 
 
+def ofertas_oficiais():
+    """Páginas de ofertas da GOL e da Azul: trechos saindo do Norte ou pro destino das suas rotas."""
+    if AV.get("radar") is False or (not TUDO and minutos_desde("oficiais_t") < 110):
+        return
+    est["oficiais_t"] = iso(AGORA)
+    lista, erros = ofertas.coletar()
+    for e in erros: print("ofertas:", e)
+    origens = AV.get("radar_origens") or radar.ORIGENS_PADRAO
+    destinos = [r["destino"] for _, r in ativas()]
+    boas = ofertas.avaliar(est, lista, origens, destinos, iso(AGORA))
+    print(f"ofertas oficiais: {len(lista)} trechos lidos, {len(boas)} pra avisar")
+    if boas:
+        L = ["✈️ <b>Oferta da própria companhia</b>", ""] + [f"🔥 {ofertas.linha(o, fontes.url_google)}" for o in boas[:6]]
+        L += ["", "<i>Preço anunciado pela cia, com taxas. Toque no preço pra abrir a página de ofertas.</i>"]
+        enviar("\n".join(L), [[(f"Ver ofertas da {boas[0]['cia']}", boas[0]["pagina"])]], forte=True)
+
+
 def comando_do_worker() -> bool:
     """Comando que chegou pelo Worker da Cloudflare (resposta rápida). Só obedece ao seu chat."""
     bruto = os.getenv("COMANDO", "").strip()
@@ -623,7 +641,7 @@ def main():
     else:
         tarefas = [("webhook", atualizar_webhook), ("comandos", comandos), ("pausas", reativar_pausas), ("saúde", saude),
                    ("compras", vigiar_compras), ("promoções", vigiar_promos), ("checagem rápida", checagem_rapida),
-                   ("radar do norte", radar_norte), ("comandos", comandos)]
+                   ("radar do norte", radar_norte), ("ofertas oficiais", ofertas_oficiais), ("comandos", comandos)]
     for nome, tarefa in tarefas:
         try:
             tarefa()

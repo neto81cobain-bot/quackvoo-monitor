@@ -1,15 +1,15 @@
-import re, html, requests
-UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36", "Accept-Language": "pt-BR,pt;q=0.9"}
-def limpa(t): return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", t)))
-for url in ["https://www.voegol.com.br/ofertas", "https://passagens.voeazul.com.br/pt/ofertas-azul"]:
-    r = requests.get(url, headers=UA, timeout=30)
-    t = limpa(r.text)
-    print("=====", url)
-    for m in list(re.finditer(r"\((BEL|MAO|STM)\)", t))[:4]:
-        print("CTX:", t[max(0, m.start()-200): m.start()+250])
-    i = t.find("R$")
-    print("PRIMEIRO R$:", t[max(0, i-300): i+150])
-    # json embutido?
-    js = re.findall(r'"(origin|destination|price|departure|airportCode|iata)[A-Za-z]*"\s*:\s*"?([^",}]{1,40})', r.text)
-    print("JSON?:", js[:20])
-    print("next_data:", "__NEXT_DATA__" in r.text, "| application/json scripts:", len(re.findall(r'<script[^>]*application/(ld\+)?json', r.text)))
+"""Teste real: ofertas oficiais + promoções (não manda nada)."""
+import yaml, ofertas, promos, radar, fontes
+cfg = yaml.safe_load(open("rotas.yaml"))
+rotas = [r for r in cfg["rotas"] if r.get("ativa") is not False]
+lista, erros = ofertas.coletar()
+print("OFICIAIS lidas:", len(lista), "erros:", erros)
+est = {}
+boas = ofertas.avaliar(est, lista, radar.ORIGENS_PADRAO, [r["destino"] for r in rotas], "2026-11-24T10:00:00+00:00")
+print("OFICIAIS do Norte/destino:", len(est["oficiais"]["ultimas"]), "| avisaria agora:", len(boas))
+for o in sorted(est["oficiais"]["ultimas"].values(), key=lambda o: o["preco"])[:15]:
+    print("  OF", o["cia"], o["nome_o"], "→", o["nome_d"], o["preco"], o["ida"], o["volta"] or "só ida")
+ach, err = promos.buscar(rotas, [], origens=radar.ORIGENS_PADRAO)
+print("PROMOS achadas:", len(ach), "erros:", err)
+for p in ach[:12]:
+    print("  PR", "⭐" if p["estrela"] else "  ", "📦" if p["pacote"] else "  ", p["fonte"][:20], "|", p["titulo"][:80], "|", ", ".join(p["rotas"])[:50])

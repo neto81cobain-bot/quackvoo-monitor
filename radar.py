@@ -147,7 +147,7 @@ def texto_resumo(est: dict) -> str | None:
     limite = (date.today() - timedelta(days=7)).isoformat()
     ult = [x for x in (est.get("radar") or {}).get("ultimos", {}).values()
            if x.get("visto", "")[:10] >= limite and x["data"] > date.today().isoformat()]
-    if not ult:
+    if not ult and not (est.get("oficiais") or {}).get("ultimas"):
         return None
     com_normal = [x for x in ult if x.get("normal")]
     if len(com_normal) >= 5:
@@ -159,5 +159,11 @@ def texto_resumo(est: dict) -> str | None:
     L = ["🌴 <b>Saindo do Norte esta semana</b>", f"<i>{titulo}</i>", ""]
     for x in lista:
         L += [f"• {linha(x)}"]
+    of = [o for o in (est.get("oficiais") or {}).get("ultimas", {}).values()
+          if o.get("visto", "")[:10] >= limite and o["ida"] > date.today().isoformat()]
+    if of:
+        import ofertas
+        L += ["", "✈️ <b>Ofertas anunciadas pela GOL e pela Azul</b>"]
+        L += [f"• {ofertas.linha(o, fontes.url_google)}" for o in sorted(of, key=lambda o: o["preco"])[:8]]
     L += ["", "<i>Toque no preço pra abrir no Google Voos. Te aviso na hora se algum cair bem abaixo do normal.</i>"]
     return "\n".join(L)
