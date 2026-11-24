@@ -3,7 +3,7 @@ import os, sys, time
 import fontes
 
 o, d, ini, fim = sys.argv[1:5]
-n = int(sys.argv[5]) if len(sys.argv) > 5 else None
+n = int(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[5].isdigit() else None
 t = time.time(); fli = fontes.calendario_fli(o, d, ini, fim, 1, n); tf = time.time() - t
 print(f"Fli: {len(fli)} dias em {tf:.0f}s")
 ap = {}
