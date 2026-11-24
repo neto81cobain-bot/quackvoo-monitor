@@ -91,6 +91,10 @@ Com uma rota só, o número é opcional. O bot só obedece ao seu `TELEGRAM_CHAT
 - **Apify:** ~US$ 0,20 por 1.000 dias de calendário. Escalas são testadas **uma vez por semana**
   (`conexoes_toda`). Uma rota de ~3 meses com 6 escalas + checagem rápida a cada 2 h fica perto de
   US$ 3/mês, dentro dos **US$ 5 grátis**. O painel mostra a estimativa.
+- **Fli (grátis):** biblioteca aberta que lê o Google Voos direto. Os trechos das escalas são buscados nele
+  primeiro; a Apify só completa quando ele cobre menos de 80% dos dias. Ele **não** acha Manaus → Santa Cruz
+  (o Google não mostra essa rota pra ele), então a rota principal segue na Apify. Se a Apify passar de 85%,
+  a checagem rápida usa só o Fli. Teste qualquer rota em Actions → "Teste das fontes de preço".
 - **SerpAPI:** 1 busca por aviso (horário do voo + opinião do Google), 2 quando sugere escala e 1 por `/buscar`.
 
 ## Sobre as conexões por conta própria
