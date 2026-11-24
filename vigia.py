@@ -24,6 +24,7 @@ import inteligencia as I
 import promos
 import radar
 import ofertas
+import barcos
 
 AQUI = Path(__file__).parent
 HIST, VIGIA, ROTAS = AQUI / "dados" / "historico.json", AQUI / "dados" / "vigia.json", AQUI / "rotas.yaml"
@@ -35,7 +36,7 @@ BRT = timezone(timedelta(hours=-3))
 TUDO = "--tudo" in sys.argv
 AGORA = datetime.now(timezone.utc)
 HOJE = AGORA.astimezone(BRT).date()
-VERSAO_COMANDOS = 5
+VERSAO_COMANDOS = 6
 
 cfg = yaml.safe_load(ROTAS.read_text(encoding="utf-8")) or {}
 cfg.setdefault("rotas", []); cfg.setdefault("avisos", {})
@@ -333,11 +334,16 @@ AJUDA = """<b>Comandos do QuackVoo</b> 🦆
 /pausar 1 [7] · /ativar 1 — pausa (por 7 dias) / reativa
 /radar — Radar do Norte: destinos baratos saindo daqui
 /comprei 1 1172 29/05 — vigia 24 h pra ver se cai mais
+🚤 <b>Barco e lancha</b>
+/barco Oriximiná Santarém [12/12] — saídas, horários e preços
+/vigiarbarco Oriximiná Santarém — avisa saída nova e queda de preço
+/barcos · /pararbarco 1 — trechos vigiados
 <i>Criar, apagar ou editar rotas: no painel. Se tiver só uma rota, o número é opcional. Respondo em ~1 min (com o Worker da Cloudflare) ou até ~15 min sem ele.</i>"""
 COMANDOS_MENU = [("status", "Preços, recorde e créditos"), ("agora", "Busca completa agora"), ("buscar", "Preço de uma data: MAO VVI 29/05"),
                  ("promos", "Últimas promoções"),
                  ("rotas", "Suas rotas"), ("radar", "Destinos baratos saindo do Norte"), ("alvo", "Muda o preço-alvo"), ("pausar", "Pausa uma rota"), ("ativar", "Reativa uma rota"),
-                 ("comprei", "Vigia 24 h depois da compra"), ("ajuda", "Todos os comandos")]
+                 ("comprei", "Vigia 24 h depois da compra"), ("barco", "Barco/lancha: /barco Oriximiná Santarém"),
+                 ("vigiarbarco", "Vigiar trecho de barco"), ("barcos", "Trechos de barco vigiados"), ("ajuda", "Todos os comandos")]
 
 
 def data_arg(s: str) -> str:
@@ -456,6 +462,31 @@ def cmd(texto: str) -> None:
             if g.get("faixa"): txt += f"\nGoogle: normal é {A.reais(g['faixa'][0])}–{A.reais(g['faixa'][1])}"
             if g.get("nivel"): txt += " · este está " + {"low": "🟢 BAIXO", "typical": "🟡 típico", "high": "🔴 ALTO"}.get(g["nivel"], g["nivel"])
             enviar(txt, [[("Abrir no Google Voos", v["url"])], [(t, u) for t, u in I.links_comparar(o, dst, ida, (A.d(volta) - A.d(ida)).days if volta else 0, 1)]])
+        elif c == "barco":
+            o, d, dia = trecho_arg(args)
+            saidas = barcos.proximos(o, d, 3 if dia else 7, dia)
+            enviar(barcos.texto(o, d, saidas))
+        elif c == "vigiarbarco":
+            o, d, _ = trecho_arg(args)
+            lista = cfg.setdefault("barcos", [])
+            if any(b["de"] == o and b["para"] == d for b in lista):
+                enviar("Esse trecho já está sendo vigiado. Veja em /barcos"); return
+            lista.append({"de": o, "para": d, "dias": 10})
+            salvar_rotas()
+            enviar(f"🚤 Vou vigiar <b>{barcos.nome(o)} → {barcos.nome(d)}</b> nos próximos 10 dias, a cada 3 h. "
+                   "Te aviso quando abrir venda de uma saída nova ou o preço cair. Lista: /barcos")
+        elif c == "barcos":
+            lista = cfg.get("barcos") or []
+            if not lista:
+                enviar("Nenhum trecho de barco vigiado. Use /vigiarbarco Oriximiná Santarém"); return
+            enviar("🚤 <b>Trechos de barco vigiados</b>\n" + "\n".join(f"{i}. {barcos.nome(b['de'])} → {barcos.nome(b['para'])}"
+                   + (" ⏸️" if b.get("ativo") is False else "") for i, b in enumerate(lista, 1)) + "\n\nParar: /pararbarco 1 · Ver saídas: /barco Oriximiná Santarém")
+        elif c == "pararbarco":
+            lista = cfg.get("barcos") or []
+            if not args or not args[0].isdigit() or not 1 <= int(args[0]) <= len(lista):
+                raise ValueError("use /pararbarco 1 (veja o número em /barcos)")
+            b = lista.pop(int(args[0]) - 1); salvar_rotas()
+            enviar(f"Parei de vigiar {barcos.nome(b['de'])} → {barcos.nome(b['para'])}.")
         elif c == "radar":
             txt = radar.texto_resumo(est)
             enviar(txt or "🌴 O Radar do Norte ainda não rodou. A primeira varredura sai em até 4 h.")
@@ -578,6 +609,71 @@ def ofertas_oficiais():
         enviar("\n".join(L), [[(f"Ver ofertas da {boas[0]['cia']}", boas[0]["pagina"])]], forte=True)
 
 
+CIDADES_RIO = ["oriximina", "santarem", "terra-santa", "trombetas", "obidos", "juruti", "parintins", "manaus", "belem", "faro",
+               "nhamunda", "monte-alegre", "alenquer", "prainha", "almeirim", "itacoatiara", "macapa", "santana", "breves",
+               "curua", "itaituba", "alter-do-chao", "maues", "barreirinha", "boa-vista-do-ramos", "urucara", "porto-de-moz", "gurupa"]
+
+
+def trecho_arg(args: list[str]) -> tuple[str, str, str | None]:
+    """'/barco Oriximiná Terra Santa 12/12' → ('oriximina', 'terra-santa', '2026-12-12')."""
+    a = list(args)
+    dia = None
+    if a and re.fullmatch(r"\d{1,2}/\d{1,2}(/\d{2,4})?|\d{4}-\d{2}-\d{2}", a[-1]):
+        dia = data_arg(a.pop())
+    txt = " ".join(a)
+    partes = re.split(r"\s*(?:>|→|->|\bpara\b|\bpra\b|\bate\b|\baté\b)\s*", txt, flags=re.I)
+    if len(partes) == 2 and all(partes):
+        return barcos.slug(partes[0]), barcos.slug(partes[1]), dia
+    tokens = [barcos.slug(t) for t in a]
+    for i in range(1, len(tokens)):
+        o, d = "-".join(tokens[:i]), "-".join(tokens[i:])
+        if o in CIDADES_RIO and d in CIDADES_RIO:
+            return o, d, dia
+    if len(tokens) == 2:
+        return tokens[0], tokens[1], dia
+    raise ValueError("use: /barco Oriximiná Santarém [12/12]  (cidade com espaço: /barco Oriximiná para Terra Santa)")
+
+
+def vigiar_barcos():
+    """Trechos de barco/lancha vigiados: avisa saída nova à venda e queda de preço."""
+    lista = cfg.get("barcos") or []
+    if not lista or (not TUDO and minutos_desde("barcos_t") < 170):
+        return
+    est["barcos_t"] = iso(AGORA)
+    mem = est.setdefault("barcos", {})
+    for b in lista:
+        if b.get("ativo") is False:
+            continue
+        k = f"{b['de']}>{b['para']}"
+        try:
+            saidas = barcos.proximos(b["de"], b["para"], int(b.get("dias", 10)))
+        except barcos.ErroBarco as e:
+            print("barcos:", k, e); continue
+        m = mem.setdefault(k, {"vistos": {}})
+        primeira = not m.get("iniciado")
+        novas, caiu = [], []
+        for dia, vs in saidas.items():
+            for v in vs:
+                vid = str(v["id"])
+                antes = m["vistos"].get(vid)
+                if antes is None and not primeira:
+                    novas.append((dia, v))
+                elif antes and v["preco"] <= antes * 0.9:
+                    caiu.append((dia, v, antes))
+                m["vistos"][vid] = v["preco"]
+        m["iniciado"] = True
+        m["vistos"] = dict(list(m["vistos"].items())[-300:])
+        if novas or caiu:
+            L = [f"🚤 <b>{barcos.nome(b['de'])} → {barcos.nome(b['para'])}</b>"]
+            for dia, v in novas[:6]:
+                L.append(f"🆕 {barcos.SEMANA[A.d(dia).weekday()]} {A.d(dia):%d/%m} {v['horario'][-5:]} · {v['embarcacao']} · "
+                         f"<a href=\"{v['url']}\">{barcos._rs(v['preco'])}</a>")
+            for dia, v, antes in caiu[:4]:
+                L.append(f"📉 {A.d(dia):%d/%m} {v['horario'][-5:]} · {v['embarcacao']} · <a href=\"{v['url']}\">{barcos._rs(v['preco'])}</a> (era {barcos._rs(antes)})")
+            L.append("<i>Toque no preço pra comprar na Yjara.</i>")
+            enviar("\n".join(L), forte=bool(caiu) or len(novas) <= 3)
+
+
 def comando_do_worker() -> bool:
     """Comando que chegou pelo Worker da Cloudflare (resposta rápida). Só obedece ao seu chat."""
     bruto = os.getenv("COMANDO", "").strip()
@@ -604,7 +700,7 @@ def main():
     else:
         tarefas = [("webhook", atualizar_webhook), ("comandos", comandos), ("pausas", reativar_pausas), ("saúde", saude),
                    ("compras", vigiar_compras), ("promoções", vigiar_promos), ("checagem rápida", checagem_rapida),
-                   ("radar do norte", radar_norte), ("ofertas oficiais", ofertas_oficiais), ("comandos", comandos)]
+                   ("radar do norte", radar_norte), ("ofertas oficiais", ofertas_oficiais), ("barcos", vigiar_barcos), ("comandos", comandos)]
     for nome, tarefa in tarefas:
         try:
             tarefa()
