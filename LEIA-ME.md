@@ -54,7 +54,7 @@ Além das 2 buscas completas por dia (`monitor.py`), o **vigia** (`vigia.py`) ro
 | O quê | Como | Custo |
 |---|---|---|
 | ⚡ Checagem rápida | a cada 2 h (ajustável), só nos ~8 dias mais baratos de cada rota | ~US$ 0,90/mês |
-| 🏷️ Promoções postadas | blogs (Melhores Destinos, Passageiro de Primeira, Pontos pra Voar, Viaje na Viagem), Portal Amazônia, canais públicos do Telegram (Melhores Destinos, Passageiro de Primeira, Cartões e Viagens, Promobit) e Google Notícias; avisa post do seu destino, saindo do Norte, 📦 pacotes e promoção das companhias (ignora milhas/pontos) | grátis |
+| 🏷️ Promoções postadas | blogs (Melhores Destinos, Passageiro de Primeira, Pontos pra Voar, Viaje na Viagem), Portal Amazônia, Panrotas, Catraca Livre, G1 AM/PA, A Crítica, canais públicos do Telegram (Melhores Destinos, Passageiro de Primeira, Cartões e Viagens, Promobit) e Google Notícias; avisa post do seu destino, saindo do Norte, 📦 pacotes e promoção das companhias (ignora milhas/pontos) | grátis |
 | 🛟 Depois da compra | `/comprei 1 1172 29/05`: vigia por 24 h; se cair, avisa pra recomprar e desistir da antiga (ANAC: compra com 7+ dias do voo) | centavos |
 | ⏰ Busca pulada | se o GitHub pular o horário agendado, o vigia dispara a busca de novo | grátis |
 | 🩺 Saúde | avisa se o monitor parar, se der erro de token ou se a Apify/SerpAPI estiver acabando (pausa a checagem rápida acima de 85%) | grátis |
@@ -71,6 +71,12 @@ Som: só promoção forte, recorde, alvo e queda pós-compra tocam. O resto cheg
 A cada 4 h (grátis, pelo Fli) olha pra onde está barato voar saindo de Manaus, Belém, Santarém e Trombetas
 (mude em `radar_origens`). Guarda o preço de cada destino e avisa na hora quando um cair 25%+ abaixo do normal;
 domingo manda o resumo. Posts dos blogs que citam "saindo de Belém/Manaus…" também avisam.
+
+### ✈️ Ofertas oficiais das companhias
+A cada 2 h lê as páginas de ofertas da **GOL** (voegol.com.br/ofertas) e da **Azul** (passagens.voeazul.com.br:
+melhores-ofertas, ofertas-azul, ofertas-imperdiveis). Avisa quando um trecho saindo do Norte cai 15%+ abaixo do
+que a cia costuma anunciar, ou quando aparece oferta pro destino de uma rota sua saindo da origem ou de um hub das
+escalas (ex.: GRU → Santa Cruz). A 1ª rodada só aprende. Tudo entra no resumo de domingo e no `/radar`.
 
 ### Botões nos avisos
 Cada aviso traz 🎯 Alvo (90% do preço atual), ✅ Comprei (liga a rede de segurança de 24 h), ⏸️ Pausar 7 dias e
