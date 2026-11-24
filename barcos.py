@@ -110,7 +110,10 @@ def texto(origem: str, destino: str, saidas: dict[str, list[dict]]) -> str:
         L.append(f"<b>{SEMANA[d.weekday()]} {d:%d/%m}</b>")
         for v in vs:
             hora = v["horario"][-5:]
-            extra = f" · {v['duracao']}" if v.get("duracao") else ""
+            extra = ""
+            m = re.fullmatch(r"(\d{1,2})[:Hh](\d{2})", str(v.get("duracao") or ""))
+            if m:
+                extra = f" · ⏱ {int(m[1])}h" + (m[2] if m[2] != "00" else "")
             barato = " 💚" if v["preco"] == menor["preco"] else ""
             L.append(f"  {hora} · {v['embarcacao'] or v['tipo']} <i>({v['empresa'] or v['tipo']})</i> · "
                      f"<a href=\"{v['url']}\">{_rs(v['preco'])}</a>{barato}{extra}")

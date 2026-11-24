@@ -78,6 +78,13 @@ melhores-ofertas, ofertas-azul, ofertas-imperdiveis). Avisa quando um trecho sai
 que a cia costuma anunciar, ou quando aparece oferta pro destino de uma rota sua saindo da origem ou de um hub das
 escalas (ex.: GRU → Santa Cruz). A 1ª rodada só aprende. Tudo entra no resumo de domingo e no `/radar`.
 
+### 🚤 Barco e lancha
+Saídas, horários e preços pela **Yjara Viagens** (plataforma de passagens fluviais autorizada pelas empresas).
+`/barco Oriximiná Santarém [12/12]` mostra os próximos dias; `/vigiarbarco Oriximiná Santarém` vigia a cada 3 h e
+avisa saída nova à venda e queda de preço (`/barcos`, `/pararbarco 1`). Lancha que só vende no porto ou nas redes
+não aparece. Testado em 24/11/2026: Oriximiná ↔ Santarém, Oriximiná ↔ Porto Trombetas, Santarém → Trombetas,
+Santarém → Manaus. Terra Santa não tinha venda online.
+
 ### Botões nos avisos
 Cada aviso traz 🎯 Alvo (90% do preço atual), ✅ Comprei (liga a rede de segurança de 24 h), ⏸️ Pausar 7 dias e
 📊 Status. Funcionam via o Worker da Cloudflare (`cloudflare/worker.js`).
@@ -93,6 +100,8 @@ Cada aviso traz 🎯 Alvo (90% do preço atual), ✅ Comprei (liga a rede de seg
 /alvo 1 1800                 muda o preço-alvo
 /pausar 1  ·  /ativar 1      liga/desliga a rota
 /comprei 1 1172 29/05        rede de segurança de 24 h
+/barco Oriximiná Santarém    saídas de barco/lancha (7 dias)
+/vigiarbarco Oriximiná Santarém · /barcos · /pararbarco 1
 ```
 Com uma rota só, o número é opcional. O bot só obedece ao seu `TELEGRAM_CHAT_ID`.
 
