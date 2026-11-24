@@ -2,7 +2,7 @@ name: QuackVoo Vigia 👀
 
 on:
   schedule:
-    - cron: "4,19,34,49 * * * *"   # a cada 15 min: comandos do Telegram, promoções, checagem rápida
+    - cron: "41 * * * *"   # reserva: o relógio principal (a cada 15 min) é o Worker da Cloudflare
   workflow_dispatch:
     inputs:
       comando:
@@ -13,6 +13,12 @@ on:
         description: "Endereço do Worker pra ligar os comandos rápidos"
         required: false
         default: ""
+
+# rodadas do relógio uma de cada vez (a que chegar enquanto outra roda espera; as repetidas são descartadas);
+# comandos do Telegram rodam na hora, cada um no seu grupo
+concurrency:
+  group: ${{ (inputs.comando != '' || inputs.webhook != '') && format('cmd-{0}', github.run_id) || 'vigia-relogio' }}
+  cancel-in-progress: false
 
 permissions:
   contents: write   # salva as rotas mudadas por comando do Telegram

@@ -16,6 +16,11 @@ async function acordarVigia(env, inputs) {
 }
 
 export default {
+  // relógio confiável: a cada 15 min acorda o vigia (o agendamento do GitHub às vezes pula horários)
+  async scheduled(evento, env, ctx) {
+    if (env.GH_TOKEN) ctx.waitUntil(acordarVigia(env, {}));
+  },
+
   async fetch(req, env) {
     const url = new URL(req.url);
     if (!env.GH_TOKEN) return txt("Falta o segredo GH_TOKEN no Worker (Settings → Variables and Secrets).", 500);
