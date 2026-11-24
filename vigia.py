@@ -561,6 +561,15 @@ def ligar_webhook() -> bool:
     return True
 
 
+def anunciar_menu():
+    if est.get("menu_anunciado") == 1 or not est.get("worker_t"):
+        return
+    enviar("🦆 <b>Bot de cara nova!</b>\nAgora tem menu com botões: avião, 🚤 barco e lancha (resposta na hora, Yjara + Navegam), "
+           "📒 agenda de lanchas com WhatsApp e promoções.\n\nDica: é só escrever um trecho, tipo <code>Oriximiná Santarém</code>.",
+           [[("🏠 Abrir o menu", "m")]], forte=True)
+    est["menu_anunciado"] = 1
+
+
 def registrar_worker(forcar=False):
     """Manda pro Worker da Cloudflare o token do bot e o resumo das configurações (pro menu responder na hora).
     Prova que é este repositório com o token OIDC do GitHub; o Worker guarda num cofre (KV)."""
@@ -735,7 +744,7 @@ def main():
         tarefas = [("webhook", atualizar_webhook), ("comandos", comandos), ("pausas", reativar_pausas), ("saúde", saude),
                    ("compras", vigiar_compras), ("promoções", vigiar_promos), ("checagem rápida", checagem_rapida),
                    ("radar do norte", radar_norte), ("ofertas oficiais", ofertas_oficiais), ("barcos", vigiar_barcos), ("comandos", comandos)]
-    for nome, tarefa in tarefas + [("worker", registrar_worker)]:
+    for nome, tarefa in tarefas + [("worker", registrar_worker), ("anúncio", anunciar_menu)]:
         try:
             tarefa()
         except Exception as e:
