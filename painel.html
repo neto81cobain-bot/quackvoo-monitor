@@ -145,6 +145,27 @@ textarea{width:100%;min-height:220px;background:var(--s2);color:var(--tx);border
     </section>
 
     <section class="card">
+      <h2>🚤 Barco e lancha</h2>
+      <p class="hint" style="margin-top:0">Trechos vigiados a cada 3 h (Yjara + Navegam): o bot avisa quando abre venda de saída nova ou o preço cai. No Telegram é só tocar em 🚤 no /menu.</p>
+      <div id="barcos"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="bDe" placeholder="De (ex.: Oriximiná)" style="flex:1;min-width:130px" autocomplete="off">
+        <input id="bPara" placeholder="Para (ex.: Santarém)" style="flex:1;min-width:130px" autocomplete="off">
+        <button class="btn gh sm" onclick="addBarco()">+ Vigiar</button>
+      </div>
+      <h2 style="margin-top:18px">📒 Agenda de lanchas</h2>
+      <p class="hint" style="margin-top:0">Lancha que vende pelo WhatsApp, Instagram ou Facebook. O contato aparece quando você busca o trecho dela (vale nos dois sentidos). Deixe "Para" vazio pra aparecer em qualquer trecho da cidade.</p>
+      <div id="agenda"></div>
+      <div class="grid" style="margin-top:8px">
+        <input id="aNome" placeholder="Nome (ex.: Lancha Fulano)" autocomplete="off">
+        <input id="aZap" placeholder="WhatsApp (93 99999-9999)" inputmode="tel" autocomplete="off">
+        <input id="aDe" placeholder="De" autocomplete="off">
+        <input id="aPara" placeholder="Para (opcional)" autocomplete="off">
+      </div>
+      <button class="btn gh sm" style="margin-top:8px" onclick="addContato()">+ Adicionar contato</button>
+    </section>
+
+    <section class="card">
       <details><summary>Ver o rotas.yaml gerado</summary>
         <textarea id="yaml" spellcheck="false" readonly style="margin-top:10px"></textarea>
       </details>
@@ -235,7 +256,7 @@ async function conectar(){
     carregado = true;
     $("app").hidden = false; $("barra").hidden = false; $("conexao").hidden = !!c.token;
     $("badge").textContent = c.token ? "pronto para salvar" : "só leitura"; $("badge").className = "badge" + (c.token ? " on" : "");
-    preencherAvisos(); render();
+    preencherAvisos(); render(); renderBarcos();
     $("msg").className = "";
   } catch(e){
     if (/GitHub 401/.test(e.message) && c.token){
@@ -316,6 +337,33 @@ function preencherAvisos(){
   const hs = cronsDoWorkflow(); $("h1").value = hs[0]||""; $("h2").value = hs[1]||"";
   ["resumo","conexoesToda","economia","tg","mail","todas","rapida","rapidaHoras","promos","palavras","radar","radarOrigens","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
 }
+
+// ---------- barcos e agenda ----------
+const NOMES_RIO = { oriximina:"Oriximiná", santarem:"Santarém", "terra-santa":"Terra Santa", obidos:"Óbidos", belem:"Belém", trombetas:"Porto Trombetas", nhamunda:"Nhamundá", "alter-do-chao":"Alter do Chão", maues:"Maués", macapa:"Macapá" };
+function slugRio(c){ let s=String(c||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); return ({stm:"santarem","porto-trombetas":"trombetas",orx:"oriximina",mao:"manaus"})[s]||s; }
+function nomeRio(s){ return NOMES_RIO[s] || String(s||"").replace(/-/g," ").replace(/\b\w/g,l=>l.toUpperCase()); }
+const escH = (t)=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+function renderBarcos(){
+  const b = cfg.barcos || [], a = cfg.agenda || [];
+  $("barcos").innerHTML = b.length ? b.map((x,i)=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span>${escH(nomeRio(x.de))} → ${escH(nomeRio(x.para))}${x.ativo===false?" ⏸️":""}</span><button class="btn gh sm" onclick="delBarco(${i})">Parar</button></div>`).join("") : `<p class="hint">Nenhum trecho vigiado ainda.</p>`;
+  $("agenda").innerHTML = a.length ? a.map((x,i)=>`<div class="row" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><span><b>${escH(x.nome)}</b> · ${escH(nomeRio(x.de))}${x.para?" ↔ "+escH(nomeRio(x.para)):""} · <a href="https://wa.me/${(String(x.whatsapp).replace(/\D/g,"").length<=11?"55":"")+String(x.whatsapp).replace(/\D/g,"")}" target="_blank" rel="noopener" style="color:var(--ac)">WhatsApp</a></span><button class="btn gh sm" onclick="delContato(${i})">Apagar</button></div>`).join("") : `<p class="hint">Agenda vazia.</p>`;
+  atualizarRodape();
+}
+function addBarco(){
+  const de=slugRio($("bDe").value), para=slugRio($("bPara").value);
+  if (!de || !para || de===para) return msg("Escreva as duas cidades do trecho.","err");
+  cfg.barcos = cfg.barcos || [];
+  if (cfg.barcos.some(x=>x.de===de && x.para===para)) return msg("Esse trecho já está na lista.","err");
+  cfg.barcos.push({ de, para, dias:10 }); $("bDe").value=$("bPara").value=""; renderBarcos(); msg("Trecho adicionado. Toque em Salvar.");
+}
+function delBarco(i){ cfg.barcos.splice(i,1); renderBarcos(); }
+function addContato(){
+  const nome=$("aNome").value.trim(), zap=$("aZap").value.replace(/\D/g,""), de=slugRio($("aDe").value), para=slugRio($("aPara").value);
+  if (!nome || zap.length<8 || !de) return msg("Preencha nome, WhatsApp (com DDD) e pelo menos a cidade de saída.","err");
+  cfg.agenda = cfg.agenda || []; cfg.agenda.push({ nome, whatsapp:zap, de, ...(para?{para}:{}) });
+  ["aNome","aZap","aDe","aPara"].forEach(id=>$(id).value=""); renderBarcos(); msg("Contato adicionado. Toque em Salvar.");
+}
+function delContato(i){ cfg.agenda.splice(i,1); renderBarcos(); }
 
 // ---------- rotas ----------
 function novaRota(){
@@ -456,9 +504,14 @@ function montarYaml(){
     o.queda_minima = +r.queda_minima || 5;
     if (r.conexoes.length){ o.conexoes = r.conexoes; o.conexao_dias = r.conexao_dias; }
     if (r.ativa===false) o.ativa = false;
+    if (r.pausada_ate) o.pausada_ate = String(r.pausada_ate);
     return o;
   });
-  return jsyaml.dump({ avisos:av, rotas }, { lineWidth:-1, noRefs:true });
+  const saida = { avisos:av, rotas };
+  if ((cfg.barcos||[]).length) saida.barcos = cfg.barcos;
+  if ((cfg.agenda||[]).length) saida.agenda = cfg.agenda;
+  for (const k of Object.keys(cfg)) if (!["avisos","rotas","barcos","agenda"].includes(k)) saida[k] = cfg[k];  // não perde nada que o bot salvou
+  return jsyaml.dump(saida, { lineWidth:-1, noRefs:true });
 }
 function atualizarRodape(){
   if (!cfg) return;
