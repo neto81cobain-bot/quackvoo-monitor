@@ -50,8 +50,8 @@ button{font:inherit;cursor:pointer}
 .step{display:flex;align-items:center;border:1px solid var(--bd);border-radius:10px;background:var(--s1);overflow:hidden}
 .step button{width:44px;height:44px;border:0;background:none;color:var(--ac);font-size:1.3rem}
 .step input{border:0;text-align:center;background:none;padding:10px 0}
-.toggle{display:flex;align-items:center;gap:10px;font-size:.9rem;color:var(--tx)}
-.toggle input{width:20px;height:20px;accent-color:var(--ok)}
+.toggle{display:flex;flex-direction:row;align-items:center;gap:10px;font-size:.9rem;color:var(--tx);text-align:left}
+.toggle input{width:20px;height:20px;flex:0 0 20px;margin:0;accent-color:var(--ok)}
 .bar{position:fixed;left:0;right:0;bottom:0;background:rgba(11,16,32,.94);backdrop-filter:blur(12px);border-top:1px solid var(--bd);padding:12px 16px;z-index:50}
 .bar .wrap{padding:0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 .cost{font-size:.82rem;color:var(--mu)}.cost b{color:var(--tx)}
@@ -124,6 +124,20 @@ textarea{width:100%;min-height:220px;background:var(--s2);color:var(--tx);border
       </div>
       <label class="toggle" style="margin-top:12px"><input type="checkbox" id="todas"> Mandar relatório em toda busca (mesmo sem queda)</label>
       <p class="hint">Desmarcado, o bot só fala quando o preço cai, bate o alvo, faz recorde ou acha escala que compensa.</p>
+    </section>
+
+    <section class="card">
+      <h2>Pra não perder promoção</h2>
+      <label class="toggle"><input type="checkbox" id="rapida"> ⚡ Checagem rápida dos dias mais baratos</label>
+      <div class="grid" style="margin-top:8px">
+        <label>A cada
+          <select id="rapidaHoras"><option value="1">1 hora</option><option value="2">2 horas</option><option value="3">3 horas</option><option value="4">4 horas</option><option value="6">6 horas</option></select></label>
+      </div>
+      <p class="hint">Olha só os ~8 dias mais baratos de cada rota: pega queda em poucas horas gastando pouco. Pausa sozinha se a Apify passar de 85% do grátis.</p>
+      <label class="toggle" style="margin-top:12px"><input type="checkbox" id="promos"> 🏷️ Promoções dos blogs (Melhores Destinos, Passagens Imperdíveis…)</label>
+      <label style="margin-top:8px">Avisar também se o post falar de (separe por vírgula)<input id="palavras" placeholder="ex.: Mega Promo Latam, Azul, feirão" autocomplete="off"></label>
+      <p class="hint">Grátis. Avisa quando um post fala do destino de alguma rota ativa (⭐ se também cita a origem).</p>
+      <p class="hint">Entre 22h e 7h as mensagens chegam sem som, menos promoção forte 🔥 e queda depois da compra 🛟.</p>
       <p class="hint">Testar escalas é o que mais gasta crédito da Apify: por isso roda só num dia da semana.</p>
     </section>
 
@@ -290,8 +304,12 @@ function preencherAvisos(){
   $("tg").checked = (av.telegram ?? av.whatsapp) !== false;
   $("mail").checked = !!av.email;
   $("todas").checked = av.relatorio_toda_busca === true;
+  $("rapida").checked = av.checagem_rapida !== false;
+  $("rapidaHoras").value = String(av.rapida_horas ?? 2);
+  $("promos").checked = av.promos !== false;
+  $("palavras").value = Array.isArray(av.palavras_promo) ? av.palavras_promo.join(", ") : (av.palavras_promo || "");
   const hs = cronsDoWorkflow(); $("h1").value = hs[0]||""; $("h2").value = hs[1]||"";
-  ["resumo","conexoesToda","economia","tg","mail","todas","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
+  ["resumo","conexoesToda","economia","tg","mail","todas","rapida","rapidaHoras","promos","palavras","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
 }
 
 // ---------- rotas ----------
@@ -415,12 +433,16 @@ function custoMes(){
     const [ini, fim] = r.ida_entre; if (!ini||!fim||fim<hoje) continue;
     const n = diasEntre(ini<hoje?hoje:ini, fim)+1, iv = +r.noites>0, hubs = r.conexoes.length;
     dias += n * execDia * 30;
-    if (hubs) dias += n * execDia * 4.3 * (iv ? 2 + hubs*4 : hubs*2);
+    if (hubs) dias += n * 4.3 * (iv ? 2 + hubs*4 : hubs*2);  // escalas: 1x por semana
+    if ($("rapida").checked) dias += 12 * (24 / (+$("rapidaHoras").value || 2)) * 30;  // ~8–12 dias por checagem
   }
   return dias * 0.0002;
 }
 function montarYaml(){
-  const av = { ...cfg.avisos, economia_minima_conexao:+$("economia").value||0, resumo_semanal:$("resumo").value, conexoes_toda:$("conexoesToda").value, email:$("mail").checked, telegram:$("tg").checked, relatorio_toda_busca:$("todas").checked };
+  const av = { ...cfg.avisos, economia_minima_conexao:+$("economia").value||0, resumo_semanal:$("resumo").value, conexoes_toda:$("conexoesToda").value, email:$("mail").checked, telegram:$("tg").checked, relatorio_toda_busca:$("todas").checked,
+    checagem_rapida:$("rapida").checked, rapida_horas:+$("rapidaHoras").value, promos:$("promos").checked,
+    palavras_promo:$("palavras").value.split(",").map(x=>x.trim()).filter(Boolean) };
+  if (!av.palavras_promo.length) delete av.palavras_promo;
   delete av.whatsapp;
   const rotas = cfg.rotas.map(r => {
     const o = { nome:(r.nome||"").trim() || nomeAuto(r), origem:r.origem, destino:r.destino, ida_entre:r.ida_entre.map(String), noites:+r.noites||0, adultos:+r.adultos||1 };

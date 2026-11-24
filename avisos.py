@@ -104,7 +104,7 @@ def html_para_png(html: str, largura: int = 420) -> bytes:
     return png
 
 
-def telegram_foto(png: bytes, legenda: str, botoes: list[list[tuple[str, str]]]) -> str:
+def telegram_foto(png: bytes, legenda: str, botoes: list[list[tuple[str, str]]], silencioso: bool = False) -> str:
     """Manda a imagem com legenda e botões de link (imagem não tem link clicável)."""
     import json, uuid
 
@@ -114,7 +114,8 @@ def telegram_foto(png: bytes, legenda: str, botoes: list[list[tuple[str, str]]])
         raise RuntimeError("Faltam os segredos TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID.")
 
     teclado = {"inline_keyboard": [[{"text": t, "url": u} for t, u in linha] for linha in botoes if linha]}
-    campos = {"chat_id": chat_id, "caption": legenda[:1024], "parse_mode": "HTML", "reply_markup": json.dumps(teclado)}
+    campos = {"chat_id": chat_id, "caption": legenda[:1024], "parse_mode": "HTML", "reply_markup": json.dumps(teclado),
+              "disable_notification": "true" if silencioso else "false"}
     fronteira = uuid.uuid4().hex
     corpo = b""
     for k, v in campos.items():
@@ -127,3 +128,50 @@ def telegram_foto(png: bytes, legenda: str, botoes: list[list[tuple[str, str]]])
         if resp.status != 200:
             raise RuntimeError(f"Telegram retornou HTTP {resp.status} ao enviar a imagem.")
     return "Telegram: imagem enviada."
+
+
+# ---------------------------------------------------------------- Telegram: chamadas genéricas (vigia e comandos)
+def tg(metodo: str, dados: dict | None = None, timeout: int = 30) -> dict:
+    import json
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("Falta o segredo TELEGRAM_BOT_TOKEN.")
+    corpo = {k: (json.dumps(v) if isinstance(v, (dict, list)) else v) for k, v in (dados or {}).items() if v is not None}
+    req = request.Request(f"https://api.telegram.org/bot{token}/{metodo}", data=parse.urlencode(corpo).encode(), method="POST")
+    try:
+        with request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:  # HTTPError traz o motivo no corpo
+        corpo_erro = getattr(e, "read", lambda: b"")()
+        raise RuntimeError(f"Telegram {metodo}: {e} {corpo_erro[:200]!r}")
+
+
+def teclado(botoes: list[list[tuple[str, str]]] | None) -> dict | None:
+    if not botoes:
+        return None
+    return {"inline_keyboard": [[{"text": t, "url": u} for t, u in linha] for linha in botoes if linha]}
+
+
+def mensagem(texto: str, botoes=None, silencioso: bool = False, chat_id: str | None = None) -> dict:
+    """Mensagem HTML com botões de link. Textos longos são divididos (botões vão na última parte)."""
+    chat = chat_id or os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    partes = _dividir_mensagem(texto)
+    r = {}
+    for i, parte in enumerate(partes):
+        r = tg("sendMessage", {"chat_id": chat, "text": parte, "parse_mode": "HTML", "disable_web_page_preview": "true",
+                               "disable_notification": "true" if silencioso else "false",
+                               "reply_markup": teclado(botoes) if i == len(partes) - 1 else None})
+    return r
+
+
+def foto_url(url: str, legenda: str, botoes=None, silencioso: bool = False, chat_id: str | None = None) -> dict:
+    chat = chat_id or os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    return tg("sendPhoto", {"chat_id": chat, "photo": url, "caption": legenda[:1024], "parse_mode": "HTML",
+                            "disable_notification": "true" if silencioso else "false", "reply_markup": teclado(botoes)}, timeout=60)
+
+
+def hora_silenciosa(agora=None) -> bool:
+    """Entre 22h e 7h (Brasília) as mensagens chegam sem som (menos promoção forte)."""
+    from datetime import datetime, timedelta, timezone
+    agora = agora or datetime.now(timezone(timedelta(hours=-3)))
+    return agora.hour >= 22 or agora.hour < 7

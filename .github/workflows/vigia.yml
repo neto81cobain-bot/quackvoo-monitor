@@ -1,0 +1,51 @@
+name: QuackVoo Vigia 👀
+
+on:
+  schedule:
+    - cron: "4,19,34,49 * * * *"   # a cada 15 min: comandos do Telegram, promoções, checagem rápida
+  workflow_dispatch:
+
+permissions:
+  contents: write   # salva as rotas mudadas por comando do Telegram
+  actions: write    # /agora e refazer a busca que o GitHub pulou
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install requests PyYAML
+      - name: Lembrar do estado anterior
+        uses: actions/cache/restore@v4
+        with:
+          path: dados/vigia.json
+          key: vigia-${{ github.run_id }}
+          restore-keys: vigia-
+      - name: Vigiar
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python vigia.py
+      - name: Guardar o estado
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: dados/vigia.json
+          key: vigia-${{ github.run_id }}
+      - name: Salvar rotas mudadas por comando
+        run: |
+          git config user.name "QuackVoo"
+          git config user.email "quackvoo@users.noreply.github.com"
+          git add rotas.yaml
+          git diff --cached --quiet && exit 0
+          git commit -m "🤖 rotas alteradas pelo Telegram"
+          for i in 1 2 3 4; do git pull --rebase -q && git push -q && exit 0; sleep $((i*5)); done
+          exit 1

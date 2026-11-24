@@ -65,24 +65,59 @@ def calendario(origem: str, destino: str, inicio: str, fim: str, adultos: int, n
     return saida
 
 
-def detalhes_voo(origem: str, destino: str, data: str, adultos: int, chave: str) -> dict | None:
-    """Voo mais barato do dia, com horários (SerpAPI google_flights). Gasta 1 busca."""
+def detalhes_voo(origem: str, destino: str, data: str, adultos: int, chave: str, volta: str | None = None) -> dict | None:
+    """Voo mais barato do dia, com horários e a opinião do Google sobre o preço (SerpAPI). Gasta 1 busca."""
     if not chave:
         return None
     p = {"engine": "google_flights", "departure_id": origem, "arrival_id": destino, "outbound_date": data,
-         "type": 2, "adults": adultos, "currency": "BRL", "hl": "pt", "gl": "br", "sort_by": 2, "api_key": chave}
+         "type": 1 if volta else 2, "adults": adultos, "currency": "BRL", "hl": "pt", "gl": "br", "sort_by": 2, "api_key": chave}
+    if volta:
+        p["return_date"] = volta
     try:
         d = requests.get("https://serpapi.com/search.json", params=p, timeout=60).json()
-    except requests.RequestException:
+    except (requests.RequestException, ValueError):
         return None
+    pi = d.get("price_insights") or {}
+    google = {}
+    if isinstance(pi.get("typical_price_range"), list) and len(pi["typical_price_range"]) == 2:
+        google["faixa"] = pi["typical_price_range"]
+    if pi.get("price_level"):
+        google["nivel"] = pi["price_level"]
+    if pi.get("lowest_price"):
+        google["menor"] = pi["lowest_price"]
     voos = (d.get("best_flights") or []) + (d.get("other_flights") or [])
     voos = [v for v in voos if isinstance(v.get("price"), (int, float)) and v.get("flights")]
     if not voos:
-        return None
+        return {"google": google} if google else None
     v = min(voos, key=lambda x: x["price"])
     ini, fim = v["flights"][0], v["flights"][-1]
     return {
         "preco": v["price"], "cia": ", ".join(sorted({f.get("airline", "?") for f in v["flights"]})),
         "saida": ini["departure_airport"]["time"], "chegada": fim["arrival_airport"]["time"],
-        "paradas": len(v["flights"]) - 1, "url": d.get("search_metadata", {}).get("google_flights_url") or url_google(origem, destino, data),
+        "paradas": len(v["flights"]) - 1, "google": google, "url": d.get("search_metadata", {}).get("google_flights_url") or url_google(origem, destino, data),
     }
+
+
+# ---------------------------------------------------------------- créditos
+def apify_uso(token: str) -> dict | None:
+    """Quanto da cota grátis da Apify já foi usado neste mês: {usado, limite, pct}."""
+    if not token:
+        return None
+    try:
+        d = requests.get("https://api.apify.com/v2/users/me/limits", params={"token": token}, timeout=30).json().get("data", {})
+        usado = float(d.get("current", {}).get("monthlyUsageUsd") or 0)
+        limite = float(d.get("limits", {}).get("maxMonthlyUsageUsd") or 5)
+        return {"usado": usado, "limite": limite, "pct": usado / limite if limite else 0}
+    except Exception:
+        return None
+
+
+def serp_restante(chave: str) -> int | None:
+    if not chave:
+        return None
+    try:
+        d = requests.get("https://serpapi.com/account.json", params={"api_key": chave}, timeout=30).json()
+        v = d.get("total_searches_left", d.get("plan_searches_left"))
+        return int(v) if v is not None else None
+    except Exception:
+        return None

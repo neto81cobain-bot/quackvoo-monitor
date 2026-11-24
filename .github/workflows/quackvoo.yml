@@ -24,6 +24,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Ler o estado do vigia (o que ele já avisou)
+        uses: actions/cache/restore@v4
+        with:
+          path: dados/vigia.json
+          key: vigia-${{ github.run_id }}
+          restore-keys: vigia-
       - name: Navegador para desenhar o relatório
         run: python -m playwright install --with-deps chromium
       - name: Olhar os preços
@@ -41,5 +47,7 @@ jobs:
           git config user.name "QuackVoo"
           git config user.email "quackvoo@users.noreply.github.com"
           git add dados/historico.json
-          git diff --cached --quiet || git commit -m "🦆 preços de $(date +%d/%m)"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "🦆 preços de $(TZ=America/Sao_Paulo date +%d/%m\ %H:%M)"
+          for i in 1 2 3 4; do git pull --rebase -q && git push -q && exit 0; sleep $((i*5)); done
+          exit 1
