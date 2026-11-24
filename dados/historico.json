@@ -132,6 +132,11 @@
     "t": "2026-11-24",
     "melhor": 1187,
     "dia": "2027-05-29"
+   },
+   {
+    "t": "2026-11-24",
+    "melhor": 1187,
+    "dia": "2027-05-29"
    }
   ],
   "assinatura": "MAO>VVI|n0|a1",
@@ -144,23 +149,23 @@
   "conexao": {
    "hub": "GRU",
    "dia": "2027-05-29",
-   "total": 1251,
+   "total": 1258,
    "ida": {
-    "total": 1251,
+    "total": 1258,
     "p1": {
      "preco": 640,
-     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDTUFPcgcIARIDR1JVQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20MAO%20to%20GRU%20on%202027-05-29%20one%20way"
     },
     "p2": {
-     "preco": 611,
-     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDR1JVcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+     "preco": 618,
+     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20GRU%20to%20VVI%20on%202027-05-29%20one%20way"
     },
     "data2": "2027-05-29"
    },
    "volta": null,
-   "economia": -79,
-   "vs_mesmo_dia": 1172,
-   "testado_em": "2026-11-23"
+   "economia": -71,
+   "vs_mesmo_dia": 1187,
+   "testado_em": "2026-11-24"
   },
   "ultimo_cal": {
    "2027-05-25": 1808,
@@ -174,12 +179,12 @@
    "2027-06-02": 1324,
    "2027-06-03": 1324,
    "2027-06-04": 1324,
-   "2027-06-05": 1324,
+   "2027-06-05": 1187,
    "2027-06-06": 1324,
    "2027-06-07": 1324,
    "2027-06-08": 1324,
    "2027-06-09": 1324,
-   "2027-06-10": 1504,
+   "2027-06-10": 1324,
    "2027-06-11": 1324,
    "2027-06-12": 1324,
    "2027-06-13": 1324,
@@ -268,12 +273,12 @@
    "2027-09-04": 1324,
    "2027-09-05": 1677
   },
-  "ultima_iso": "2026-11-24T03:05:54+00:00",
+  "ultima_iso": "2026-11-24T04:53:28+00:00",
   "promo_avisada": 1187
  },
  "_meta": {
-  "ultima": "2026-11-24T03:05:54+00:00",
-  "custo_dias": 104,
+  "ultima": "2026-11-24T04:53:28+00:00",
+  "custo_dias": 733,
   "erros": []
  }
 }
