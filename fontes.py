@@ -37,20 +37,24 @@ def calendario_fli(origem: str, destino: str, inicio: str, fim: str, adultos: in
         o, d_ = getattr(Airport, origem), getattr(Airport, destino)
     except AttributeError as e:
         raise ErroFonte(f"Fli não conhece o aeroporto {e}.")
-    segs, tipo = build_date_search_segments(origin=o, destination=d_, start_date=ini.isoformat(),
-                                            trip_duration=noites or None, is_round_trip=bool(noites))
-    filtros = DateSearchFilters(trip_type=tipo, passenger_info=PassengerInfo(adults=adultos), flight_segments=segs,
-                                stops=MaxStops.ANY, seat_type=SeatType.ECONOMY, from_date=ini.isoformat(),
-                                to_date=fim_d.isoformat(), duration=noites or None)
-    ultimo = None
-    for tentativa in range(3):
-        try:
-            res = SearchDates().search(filtros, currency="BRL", language="pt-BR", country="BR") or []
-            break
-        except Exception as e:  # rede, limite de pedidos, resposta mudou
-            ultimo = e
-            time.sleep(8 * (tentativa + 1))
-    else:
+    # o Google não entrega mais a grade de calendário: cada data é uma página (~2 MB), até 93 por busca
+    res, ultimo, a = [], None, ini
+    while a <= fim_d:
+        b = min(a + timedelta(days=89), fim_d)
+        segs, tipo = build_date_search_segments(origin=o, destination=d_, start_date=a.isoformat(),
+                                                trip_duration=noites or None, is_round_trip=bool(noites))
+        filtros = DateSearchFilters(trip_type=tipo, passenger_info=PassengerInfo(adults=adultos), flight_segments=segs,
+                                    stops=MaxStops.ANY, seat_type=SeatType.ECONOMY, from_date=a.isoformat(),
+                                    to_date=b.isoformat(), duration=noites or None)
+        for tentativa in range(2):
+            try:
+                res += SearchDates().search(filtros, currency="BRL", language="pt-BR", country="BR") or []
+                break
+            except Exception as e:  # rede, bloqueio, resposta mudou
+                ultimo = e
+                time.sleep(10)
+        a = b + timedelta(days=1)
+    if not res and ultimo:
         raise ErroFonte(f"Fli falhou: {str(ultimo)[:160]}")
     saida = {}
     for item in res:

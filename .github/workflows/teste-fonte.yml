@@ -26,5 +26,4 @@ jobs:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           ROTA: ${{ inputs.rota }}
         run: |
-          python debug_fli.py 2>&1 | grep -v "^DEBUG:urllib3" | tail -40
           python comparar_fontes.py $ROTA ${{ inputs.apify && ' ' || '--sem-apify' }}

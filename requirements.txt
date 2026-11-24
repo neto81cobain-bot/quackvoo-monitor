@@ -1,4 +1,4 @@
 requests>=2.31
 PyYAML>=6.0
 playwright>=1.44
-flights>=0.9
+flights @ git+https://github.com/punitarani/fli.git
