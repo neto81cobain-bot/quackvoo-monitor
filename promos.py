@@ -35,6 +35,7 @@ AEREO = r"(voos?\b|aere[ao]s?|passage(m|ns) aere|pacotes?\b|trechos?\b|ida e vol
 PRECO = r"(r\$\s?\d|a partir de|milhas|% ?off|desconto)"
 PACOTE = r"(pacotes?\b|voo \+ hotel|aereo \+ hotel|hospedage|diarias|all inclusive|cruzeiro)"
 CIA_PROMO = r"\b(latam|azul|gol)\b.{0,80}(promo|feirao|relampago|a partir de r\$)|(promo|feirao|relampago).{0,80}\b(latam|azul|gol)\b"
+MILHAS = r"(milheiro|\bcpm\b|bonus|transferenc|clube (azul|smiles|latam)|livelo|esfera|premmia|pontos\b|cartao|cartoes|assinatura)"
 NORTE_EXTRA = ["oriximina", "trombetas", "parintins", "macapa", "boa vista", "porto velho", "rio branco", "altamira", "maraba"]
 
 
@@ -46,7 +47,7 @@ def _texto(x) -> str:
 def ler_rss(nome: str, url: str) -> list[dict]:
     r = requests.get(url, headers=CABECALHO, timeout=25)
     r.raise_for_status()
-    raiz = ET.fromstring(r.content)
+    raiz = ET.fromstring(r.content.strip())
     out = []
     for it in raiz.iter("item"):
         titulo = _texto(it.findtext("title"))
@@ -124,7 +125,7 @@ def combinar(posts: list[dict], rotas: list[dict], extras: list[str], origens: l
         for w in extras:
             if _acha(w, t):
                 motivos.append(f"palavra “{w}”")
-        if re.search(CIA_PROMO, titulo):
+        if re.search(CIA_PROMO, titulo) and not re.search(MILHAS, titulo):  # milhas/pontos não é passagem
             motivos.append("✈️ promoção de companhia")
         if motivos:
             achados.append({**p, "rotas": motivos, "estrela": estrela, "pacote": bool(re.search(PACOTE, titulo)),
