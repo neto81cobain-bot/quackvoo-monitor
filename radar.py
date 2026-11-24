@@ -38,14 +38,18 @@ def explorar(origem: str, data: str) -> list[dict]:
     return out
 
 
-def explorar_serp(origem: str, chave: str) -> list[dict]:
+BRASIL = "/m/015fr"  # filtro "só destinos no Brasil" da Explorar
+
+
+def explorar_serp(origem: str, chave: str, area: str | None = None) -> list[dict]:
     """Reserva paga (1 busca SerpAPI): 'Explorar' do Google pros próximos meses, datas flexíveis."""
     import requests
     if not chave:
         return []
     try:
         d = requests.get("https://serpapi.com/search.json", timeout=60, params={
-            "engine": "google_travel_explore", "departure_id": origem, "currency": "BRL", "hl": "pt", "gl": "br", "api_key": chave}).json()
+            "engine": "google_travel_explore", "departure_id": origem, "currency": "BRL", "hl": "pt", "gl": "br", "api_key": chave,
+            **({"arrival_area_id": area} if area else {})}).json()
     except Exception as e:
         print(f"radar serp {origem}: {e}"); return []
     if d.get("error"):
@@ -71,7 +75,8 @@ def rodar(est: dict, origens: list[str], agora_iso: str, rodada: int, serp: str 
     boas = []
     coletas = []
     falhas = 0
-    for o in origens:
+    pula_gratis = rad.get("gratis_off_ate", "") > agora_iso  # o Google anda recusando a busca grátis
+    for o in ([] if pula_gratis else origens):
         for off in offs:
             achou = explorar(o, (hoje + timedelta(days=off)).isoformat())
             coletas += [(o, x) for x in achou]
@@ -83,12 +88,15 @@ def rodar(est: dict, origens: list[str], agora_iso: str, rodada: int, serp: str 
     # o Google às vezes recusa a busca grátis; aí usa a SerpAPI, 1 aeroporto por vez, no máx. a cada 12 h
     sr = est.get("serp_restante")
     ult_serp = rad.get("serp_t", "")
+    if not coletas and not pula_gratis:
+        rad["gratis_off_ate"] = _mais_horas(agora_iso, 24) + ":00:00+00:00"
     if not coletas and serp and (sr is None or sr > 80) and (not ult_serp or agora_iso[:13] >= _mais_horas(ult_serp, 12)):
-        o = origens[rad.get("serp_i", 0) % len(origens)]
+        pares = [(o, a) for o in origens for a in (None, BRASIL)]  # cada aeroporto: mundo e só Brasil, revezando
+        o, area = pares[rad.get("serp_i", 0) % len(pares)]
         rad["serp_i"] = rad.get("serp_i", 0) + 1
         rad["serp_t"] = agora_iso
-        coletas = [(o, x) for x in explorar_serp(o, serp)]
-        print(f"radar: busca grátis recusada; SerpAPI trouxe {len(coletas)} destinos saindo de {o}")
+        coletas = [(o, x) for x in explorar_serp(o, serp, area)]
+        print(f"radar: SerpAPI trouxe {len(coletas)} destinos saindo de {o} ({'Brasil' if area else 'mundo'})")
     for o, x in coletas:
         chave = f"{o}>{x['dest']}"
         h = rad["hist"].setdefault(chave, [])
