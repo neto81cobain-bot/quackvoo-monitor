@@ -5,23 +5,23 @@ avisos:
   email: false
   telegram: true
 rotas:
-  - nome: Manaus -> Santa Cruz (Inverno)
-    origem: MAO
-    destino: VVI
-    ida_entre:
-      - '2027-05-25'
-      - '2027-09-05'
-    noites: 0
-    adultos: 1
-    preco_alvo: 2400
-    queda_minima: 5
-    conexoes:
-      - GRU
-      - VCP
-      - BSB
-      - CGB
-      - CGH
-      - STM
-    conexao_dias:
-      - 0
-      - 1
+- nome: Manaus -> Santa Cruz (Inverno)
+  origem: MAO
+  destino: VVI
+  ida_entre:
+  - '2027-05-25'
+  - '2027-09-05'
+  noites: 0
+  adultos: 1
+  preco_alvo: 1050
+  queda_minima: 5
+  conexoes:
+  - GRU
+  - VCP
+  - BSB
+  - CGB
+  - CGH
+  - STM
+  conexao_dias:
+  - 0
+  - 1
