@@ -10,7 +10,7 @@ const txt = (t, s = 200) => new Response(t, { status: s, headers: { "Content-Typ
 async function acordarVigia(env, inputs) {
   return fetch(`https://api.github.com/repos/${REPO}/actions/workflows/vigia.yml/dispatches`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json", "User-Agent": "quackvoo-worker" },
+    headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", "User-Agent": "quackvoo-worker" },
     body: JSON.stringify({ ref: "main", inputs }),
   });
 }
