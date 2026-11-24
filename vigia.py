@@ -579,7 +579,7 @@ def radar_norte():
     if TUDO or minutos_desde("radar_t") >= horas * 60 - 10:
         est["radar_t"] = iso(AGORA)
         est["radar_rodada"] = est.get("radar_rodada", 0) + 1
-        boas = radar.rodar(est, origens, iso(AGORA), est["radar_rodada"])
+        boas = radar.rodar(est, origens, iso(AGORA), est["radar_rodada"], SERP)
         print(f"radar: {len(est.get('radar', {}).get('ultimos', {}))} destinos conhecidos, {len(boas)} ofertas boas agora")
         if boas:
             texto, botoes = radar.texto_alerta(boas)

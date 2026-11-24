@@ -5,6 +5,7 @@ longo dos dias e avisa quando um cair bem abaixo do normal. Domingo manda o resu
 """
 from datetime import date, timedelta
 from statistics import median
+from datetime import datetime
 
 import analise as A
 import fontes
@@ -13,6 +14,10 @@ from aeroportos import nome as nome_aero
 
 ORIGENS_PADRAO = ["MAO", "BEL", "STM", "TMT"]
 OFFSETS = [10, 17, 24, 31, 38, 45, 52, 59, 66, 73, 80, 87]  # dias à frente, revezados a cada rodada
+
+
+def _mais_horas(iso: str, h: int) -> str:
+    return (datetime.fromisoformat(iso) + timedelta(hours=h)).isoformat()[:13]
 
 
 def explorar(origem: str, data: str) -> list[dict]:
@@ -33,28 +38,70 @@ def explorar(origem: str, data: str) -> list[dict]:
     return out
 
 
-def rodar(est: dict, origens: list[str], agora_iso: str, rodada: int) -> list[dict]:
+def explorar_serp(origem: str, chave: str) -> list[dict]:
+    """Reserva paga (1 busca SerpAPI): 'Explorar' do Google pros próximos meses, datas flexíveis."""
+    import requests
+    if not chave:
+        return []
+    try:
+        d = requests.get("https://serpapi.com/search.json", timeout=60, params={
+            "engine": "google_travel_explore", "departure_id": origem, "currency": "BRL", "hl": "pt", "gl": "br", "api_key": chave}).json()
+    except Exception as e:
+        print(f"radar serp {origem}: {e}"); return []
+    if d.get("error"):
+        print(f"radar serp {origem}: {d['error']}"); return []
+    out = []
+    for x in d.get("destinations") or []:
+        ap = x.get("destination_airport") or x.get("airport") or {}
+        cod = (ap.get("code") if isinstance(ap, dict) else ap) or x.get("airport_code")
+        preco = x.get("flight_price") or x.get("price")
+        ida = x.get("start_date") or x.get("outbound_date")
+        if not (cod and preco and ida) or cod == origem:
+            continue
+        out.append({"dest": cod, "cidade": x.get("name") or cod, "pais": x.get("country"), "preco": round(preco), "data": ida,
+                    "volta": x.get("end_date") or x.get("return_date"), "cia": x.get("airline"), "paradas": x.get("number_of_stops")})
+    return out
+
+
+def rodar(est: dict, origens: list[str], agora_iso: str, rodada: int, serp: str = "") -> list[dict]:
     """Uma varredura. Atualiza o histórico em `est` e devolve as ofertas que merecem aviso agora."""
     rad = est.setdefault("radar", {"hist": {}, "alertas": {}})
     hoje = date.today()
     offs = [OFFSETS[(rodada + k * 4) % len(OFFSETS)] for k in range(3)]
     boas = []
+    coletas = []
+    falhas = 0
     for o in origens:
         for off in offs:
-            data = (hoje + timedelta(days=off)).isoformat()
-            for x in explorar(o, data):
-                chave = f"{o}>{x['dest']}"
-                h = rad["hist"].setdefault(chave, [])
-                normal = median([p for _, _, p in h]) if len(h) >= 5 else None
-                h.append([agora_iso[:10], x["data"], x["preco"]])
-                rad["hist"][chave] = h[-60:]
-                x.update(origem=o, normal=normal, chave=chave, visto=agora_iso)
-                rad.setdefault("ultimos", {})[chave] = x
-                if normal and x["preco"] <= 0.75 * normal:
-                    ja = rad["alertas"].get(chave)
-                    if not ja or x["preco"] <= ja["preco"] * 0.9 or (hoje - A.d(ja["quando"][:10])).days >= 7:
-                        rad["alertas"][chave] = {"preco": x["preco"], "quando": agora_iso}
-                        boas.append(x)
+            achou = explorar(o, (hoje + timedelta(days=off)).isoformat())
+            coletas += [(o, x) for x in achou]
+            falhas = 0 if achou else falhas + 1
+            if falhas >= 2 and not coletas:
+                break  # o Google está recusando: não insiste
+        if falhas >= 2 and not coletas:
+            break
+    # o Google às vezes recusa a busca grátis; aí usa a SerpAPI, 1 aeroporto por vez, no máx. a cada 12 h
+    sr = est.get("serp_restante")
+    ult_serp = rad.get("serp_t", "")
+    if not coletas and serp and (sr is None or sr > 80) and (not ult_serp or agora_iso[:13] >= _mais_horas(ult_serp, 12)):
+        o = origens[rad.get("serp_i", 0) % len(origens)]
+        rad["serp_i"] = rad.get("serp_i", 0) + 1
+        rad["serp_t"] = agora_iso
+        coletas = [(o, x) for x in explorar_serp(o, serp)]
+        print(f"radar: busca grátis recusada; SerpAPI trouxe {len(coletas)} destinos saindo de {o}")
+    for o, x in coletas:
+        chave = f"{o}>{x['dest']}"
+        h = rad["hist"].setdefault(chave, [])
+        normal = median([p for _, _, p in h]) if len(h) >= 5 else None
+        h.append([agora_iso[:10], x["data"], x["preco"]])
+        rad["hist"][chave] = h[-60:]
+        x.update(origem=o, normal=normal, chave=chave, visto=agora_iso)
+        rad.setdefault("ultimos", {})[chave] = x
+        if normal and x["preco"] <= 0.75 * normal:
+            ja = rad["alertas"].get(chave)
+            if not ja or x["preco"] <= ja["preco"] * 0.9 or (hoje - A.d(ja["quando"][:10])).days >= 7:
+                rad["alertas"][chave] = {"preco": x["preco"], "quando": agora_iso}
+                boas.append(x)
     # só o melhor dia por destino
     melhores = {}
     for x in boas:
@@ -64,7 +111,7 @@ def rodar(est: dict, origens: list[str], agora_iso: str, rodada: int) -> list[di
 
 
 def linha(x: dict, com_normal=True) -> str:
-    url = fontes.url_google(x["origem"], x["dest"], x["data"])
+    url = fontes.url_google(x["origem"], x["dest"], x["data"], x.get("volta"))
     base = (f"<b>{nome_aero(x['origem'])} → {x['cidade']}</b> "
             f'<a href="{url.replace("&", "&amp;")}">{A.reais(x["preco"])}</a> · {A.SEMANA[A.d(x["data"]).weekday()]} {A.d(x["data"]).strftime("%d/%m")}')
     extra = []
@@ -79,7 +126,7 @@ def texto_alerta(boas: list[dict]) -> tuple[str, list]:
     L = ["🌴 <b>Radar do Norte: passagem boa saindo daqui!</b>", ""]
     for x in boas[:5]:
         L += [f"🔥 {linha(x)}", ""]
-    L.append("<i>Preço só de ida, com taxas. Promoção assim costuma durar pouco.</i>")
+    L.append("<i>Preço com taxas" + (" (ida e volta quando há data de volta)" if any(x.get("volta") for x in boas) else ", só ida") + ". Promoção assim costuma durar pouco.</i>")
     x = boas[0]
     sites = I.links_sites(x["origem"], x["dest"], x["data"])
     botoes = [[(f"🔎 Ver {x['cidade']} no Google Voos", fontes.url_google(x["origem"], x["dest"], x["data"]))],
