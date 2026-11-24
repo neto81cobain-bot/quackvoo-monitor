@@ -525,6 +525,22 @@ def comandos():
 
 
 # ---------------------------------------------------------------- principal
+def ligar_webhook() -> bool:
+    """Chamado pelo /ligar do Worker: registra o endereço dele no Telegram (o token do bot está aqui)."""
+    url = os.getenv("WEBHOOK", "").strip()
+    if not url:
+        return False
+    if not re.fullmatch(r"https://[\w.-]+\.workers\.dev/telegram", url):
+        print("endereço de webhook recusado:", url); return True
+    try:
+        avisos.tg("setWebhook", {"url": url, "allowed_updates": ["message"]})
+        est["webhook"] = url
+        enviar("⚡ <b>Comandos rápidos ligados!</b> Agora respondo em ~1 min. Teste: /status")
+    except Exception as e:
+        print("setWebhook falhou:", e)
+    return True
+
+
 def comando_do_worker() -> bool:
     """Comando que chegou pelo Worker da Cloudflare (resposta rápida). Só obedece ao seu chat."""
     bruto = os.getenv("COMANDO", "").strip()
@@ -543,7 +559,7 @@ def comando_do_worker() -> bool:
 def main():
     if not os.getenv("TELEGRAM_BOT_TOKEN"):
         sys.exit("Falta TELEGRAM_BOT_TOKEN.")
-    if comando_do_worker():  # rodada curta: só responde o comando
+    if ligar_webhook() or comando_do_worker():  # rodada curta
         tarefas = []
     else:
         tarefas = [("comandos", comandos), ("saúde", saude), ("compras", vigiar_compras),

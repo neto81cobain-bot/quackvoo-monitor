@@ -9,6 +9,10 @@ on:
         description: "Comando do Telegram (enviado pelo Worker da Cloudflare)"
         required: false
         default: ""
+      webhook:
+        description: "Endereço do Worker pra ligar os comandos rápidos"
+        required: false
+        default: ""
 
 permissions:
   contents: write   # salva as rotas mudadas por comando do Telegram
@@ -39,6 +43,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GITHUB_TOKEN: ${{ github.token }}
           COMANDO: ${{ inputs.comando }}
+          WEBHOOK: ${{ inputs.webhook }}
         run: python vigia.py
       - name: Guardar o estado
         if: always()
