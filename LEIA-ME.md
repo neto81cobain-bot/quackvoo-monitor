@@ -79,11 +79,12 @@ que a cia costuma anunciar, ou quando aparece oferta pro destino de uma rota sua
 escalas (ex.: GRU → Santa Cruz). A 1ª rodada só aprende. Tudo entra no resumo de domingo e no `/radar`.
 
 ### 🚤 Barco e lancha
-Saídas, horários e preços pela **Yjara Viagens** (plataforma de passagens fluviais autorizada pelas empresas).
+Saídas, horários e preços de duas plataformas de venda online: **Yjara Viagens** (Pará e Baixo Amazonas) e
+**Navegam** (Amazonas, inclusive Terra Santa, Faro e Nhamundá). Viagem com escala aparece: cada pedaço é vendido como
+trecho, e o `/barco` mostra por onde a embarcação passa antes ("passa por Juruti, Óbidos").
 `/barco Oriximiná Santarém [12/12]` mostra os próximos dias; `/vigiarbarco Oriximiná Santarém` vigia a cada 3 h e
 avisa saída nova à venda e queda de preço (`/barcos`, `/pararbarco 1`). Lancha que só vende no porto ou nas redes
-não aparece. Testado em 24/11/2026: Oriximiná ↔ Santarém, Oriximiná ↔ Porto Trombetas, Santarém → Trombetas,
-Santarém → Manaus. Terra Santa não tinha venda online.
+não aparece. Em 24/11/2026, Terra Santa e Faro estavam cadastradas, mas sem nenhuma viagem à venda online.
 
 ### Botões nos avisos
 Cada aviso traz 🎯 Alvo (90% do preço atual), ✅ Comprei (liga a rede de segurança de 24 h), ⏸️ Pausar 7 dias e
