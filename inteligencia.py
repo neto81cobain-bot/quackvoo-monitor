@@ -7,15 +7,17 @@ import analise as A
 
 # ---------------------------------------------------------------- preço típico e tendência
 def tipico(cal: dict, h: dict, google: dict | None = None) -> tuple[float | None, str]:
-    """Preço 'normal' da rota. Prioridade: faixa típica do Google > mediana do calendário > histórico."""
+    """Preço 'normal' de um dia barato nessa rota (comparar o mais barato com a média de todos os dias
+    faria quase tudo parecer promoção). Prioridade: faixa típica do Google > seu histórico > calendário."""
     if google and google.get("faixa"):
         lo, hi = google["faixa"]
         return (lo + hi) / 2, f"faixa típica do Google ({A.reais(lo)}–{A.reais(hi)})"
-    if cal and len(cal) >= 7:
-        return median(v["preco"] for v in cal.values()), "preço mais comum nas suas datas"
     serie = [e["melhor"] for e in h.get("execucoes", [])]
-    if len(serie) >= 3:
-        return median(serie), "seu histórico"
+    if len(serie) >= 5:
+        return median(serie[-30:]), "menor preço típico nas suas buscas"
+    if cal and len(cal) >= 10:
+        precos = sorted(v["preco"] for v in cal.values())
+        return precos[len(precos) // 5], "preço dos dias baratos do período"
     return None, ""
 
 
@@ -43,7 +45,7 @@ def veredito(preco: float, cal: dict, h: dict, r: dict, google: dict | None = No
     ini = A.d(str(r["ida_entre"][0]))
     faltam = (max(ini, date.today()) - date.today()).days
 
-    if desconto >= 0.25 or (google and google.get("nivel") == "low" and desconto >= 0.15):
+    if desconto >= 0.20 or (google and google.get("nivel") == "low" and desconto >= 0.15):
         nivel, emoji, rotulo = "promo", "🔥", "Promoção forte"
     elif desconto >= 0.12 or (eh_recorde and desconto >= 0.05):
         nivel, emoji, rotulo = "bom", "✅", "Preço bom"
