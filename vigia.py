@@ -464,7 +464,7 @@ def cmd(texto: str) -> None:
             enviar(txt, [[("Abrir no Google Voos", v["url"])], [(t, u) for t, u in I.links_comparar(o, dst, ida, (A.d(volta) - A.d(ida)).days if volta else 0, 1)]])
         elif c == "barco":
             o, d, dia = trecho_arg(args)
-            saidas = barcos.proximos(o, d, 3 if dia else 7, dia)
+            saidas = barcos.proximos(o, d, 3 if dia else 7, dia, paradas=True)
             enviar(barcos.texto(o, d, saidas))
         elif c == "vigiarbarco":
             o, d, _ = trecho_arg(args)

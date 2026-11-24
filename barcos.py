@@ -1,5 +1,8 @@
-"""Passagens de barco e lancha na Amazônia (Yjara Viagens: plataforma autorizada pelas empresas que fazem as viagens).
-Lê a mesma busca pública que o site usa, sem login. Volume baixo: só os trechos que você vigia e os /barco que você pede."""
+"""Passagens de barco e lancha na Amazônia, de duas plataformas de venda online:
+  • Yjara Viagens (Pará e Baixo Amazonas: Santarém, Oriximiná, Trombetas, Óbidos, Juruti, Parintins, Manaus…)
+  • Navegam (Amazonas: Manaus, Parintins, Faro, Nhamundá, Terra Santa, Solimões…)
+Lê a mesma busca pública que os sites usam, sem login. Volume baixo: só os trechos que você vigia e os /barco que você pede.
+As viagens com escala aparecem: cada pedaço da viagem é vendido como um trecho (ex.: Manaus → Oriximiná passando por Juruti)."""
 import re
 from datetime import date, datetime, timedelta, timezone
 
@@ -78,15 +81,108 @@ def buscar(origem: str, destino: str, dia: str) -> list[dict]:
     return sorted(out, key=lambda v: (v["horario"][6:10] + v["horario"][3:5] + v["horario"][:2] + v["horario"][11:], v["preco"]))
 
 
-def proximos(origem: str, destino: str, dias: int = 7, inicio: str | None = None) -> dict[str, list[dict]]:
+def paradas_yjara(origem: str, dia: str) -> dict:
+    """Todos os trechos vendidos saindo de `origem` no dia, agrupados por viagem: {id_viagem: [(destino, preço)]}."""
+    out = {}
+    for pg in (1, 2, 3):
+        p = {"origem": slug(origem), "destino": "", "data_hora": dia, "quantia": 1, "subdomain": "yjaraviagens", "page": pg}
+        try:
+            j = requests.get(API + "/trechos-viagem", params=p, headers={**UA, "X-API-KEY": _chave()}, timeout=30).json()
+            dd = j["data"]["trechos"]
+        except Exception:
+            break
+        for x in dd["data"]:
+            out.setdefault(str(x.get("id_viagem")), []).append((x["trecho"].split(" x ")[-1].split("/")[0], float(x.get("valor_num") or 0)))
+        if pg >= (dd.get("last_page") or 1):
+            break
+    return out
+
+
+# ---------------------------------------------------------------- Navegam
+NAVEGAM = "https://navegam-fluvial-api-prod-979984919366.us-central1.run.app"
+_CIDADES_NAV: dict = {}
+
+
+def _cidades_navegam() -> dict:
+    if not _CIDADES_NAV:
+        for pg in range(1, 5):
+            try:
+                j = requests.get(NAVEGAM + "/ecommerce/popular-destinations", params={"page": pg, "page_size": 50}, headers=UA, timeout=30).json()
+            except Exception:
+                break
+            dd = (j.get("result") or {}).get("data", [])
+            for x in dd:
+                _CIDADES_NAV.setdefault(slug(x["name"]), x["id"])
+            if len(dd) < 50:
+                break
+    return _CIDADES_NAV
+
+
+def navegam(origem: str, destino: str, inicio: date, dias: int) -> dict[str, list[dict]]:
+    cid = _cidades_navegam()
+    o, d = cid.get(slug(origem)), cid.get(slug(destino))
+    if not (o and d):
+        return {}
+    fim = inicio + timedelta(days=dias - 1)
+    out = {}
+    for pg in range(1, 8):
+        try:
+            j = requests.get(NAVEGAM + "/ecommerce/travels", params={"origin_id": o, "destination_id": d, "page": pg, "page_size": 50},
+                             headers=UA, timeout=30).json()
+        except Exception:
+            break
+        dd = (j.get("result") or {}).get("data", [])
+        for x in dd:
+            sai = datetime.fromisoformat(x["departure_date"].replace("Z", "+00:00"))
+            if not (inicio <= sai.date() <= fim):
+                continue
+            dia = sai.date().isoformat()
+            dur = ""
+            try:
+                h = (datetime.fromisoformat(x["arrival_date"].replace("Z", "+00:00")) - sai).total_seconds() / 3600
+                dur = f"{int(h)}:{int(round((h % 1) * 60)):02d}"
+            except Exception:
+                pass
+            comida = x.get("feeding_cost") or 0
+            out.setdefault(dia, []).append({
+                "id": f"nav{x['id']}", "embarcacao": (x.get("boat") or {}).get("name", ""), "tipo": (x.get("boat") or {}).get("type", ""),
+                "empresa": "Navegam", "trecho": f"{x['origin']['name']} x {x['destination']['name']}",
+                "horario": sai.strftime("%d/%m/%Y %H:%M"), "saida": x["departure_date"], "duracao": dur,
+                "preco": float(x.get("sale_cost") or x.get("transportation_cost") or 0), "comida": float(comida),
+                "url": f"https://navegam.com.br/busca?origem={o}&destino={d}&ida={dia}&type=ida&passageiros=1", "fonte": "Navegam"})
+        if len(dd) < 10:
+            break
+    return out
+
+
+def proximos(origem: str, destino: str, dias: int = 7, inicio: str | None = None, paradas: bool = False) -> dict[str, list[dict]]:
+    """Saídas dos próximos dias nas duas plataformas. paradas=True: diz por onde a viagem passa antes (Yjara)."""
     d0 = date.fromisoformat(inicio) if inicio else date.today()
     out = {}
+    erros = []
     for i in range(dias):
         dia = (d0 + timedelta(days=i)).isoformat()
-        v = buscar(origem, destino, dia)
+        try:
+            v = buscar(origem, destino, dia)
+        except ErroBarco as e:
+            erros.append(str(e)); v = []
+        if v and paradas:
+            grupos = paradas_yjara(origem, dia)
+            for x in v:
+                antes = sorted((p, n) for n, p in grupos.get(str(x["id"]), []) if p < x["preco"] and slug(n) != slug(destino))
+                x["via"] = [n for _, n in antes]
         if v:
             out[dia] = v
-    return out
+    try:
+        for dia, vs in navegam(origem, destino, d0, dias).items():
+            out.setdefault(dia, []).extend(vs)
+    except Exception as e:
+        erros.append(f"Navegam: {str(e)[:60]}")
+    if not out and erros and len(erros) >= dias:
+        raise ErroBarco(erros[0])
+    for dia in out:
+        out[dia].sort(key=lambda v: v["horario"][11:])
+    return dict(sorted(out.items()))
 
 
 SEMANA = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
@@ -101,7 +197,7 @@ def texto(origem: str, destino: str, saidas: dict[str, list[dict]]) -> str:
     nome_o, nome_d = nome(slug(origem)), nome(slug(destino))
     if not saidas:
         return (f"🚤 <b>{nome_o} → {nome_d}</b>\nNão achei saídas à venda online nesses dias.\n"
-                "<i>Algumas lanchas só vendem no porto ou pelas redes. A venda online abre, por regra da ANTAQ, pelo menos 5 dias antes.</i>")
+                "<i>Procurei na Yjara e na Navegam. Algumas lanchas só vendem no porto ou pelas redes. A venda online abre, por regra da ANTAQ, pelo menos 5 dias antes.</i>")
     todos = [v for vs in saidas.values() for v in vs]
     menor = min(todos, key=lambda v: v["preco"])
     L = [f"🚤 <b>{nome_o} → {nome_d}</b>", f"<i>{len(todos)} saídas · a partir de {_rs(menor['preco'])}</i>", ""]
@@ -115,8 +211,10 @@ def texto(origem: str, destino: str, saidas: dict[str, list[dict]]) -> str:
             if m:
                 extra = f" · ⏱ {int(m[1])}h" + (m[2] if m[2] != "00" else "")
             barato = " 💚" if v["preco"] == menor["preco"] else ""
+            via = f"\n      <i>passa por {', '.join(v['via'])}</i>" if v.get("via") else ""
+            comida = f" (+{_rs(v['comida'])} comida)" if v.get("comida") else ""
             L.append(f"  {hora} · {v['embarcacao'] or v['tipo']} <i>({v['empresa'] or v['tipo']})</i> · "
-                     f"<a href=\"{v['url']}\">{_rs(v['preco'])}</a>{barato}{extra}")
+                     f"<a href=\"{v['url']}\">{_rs(v['preco'])}</a>{comida}{barato}{extra}{via}")
         L.append("")
-    L.append("<i>Toque no preço pra comprar na Yjara (PIX tem desconto). Lanchas que só vendem no porto ou nas redes não aparecem aqui.</i>")
+    L.append("<i>Toque no preço pra comprar (Yjara ou Navegam). Lanchas que só vendem no porto ou nas redes não aparecem aqui.</i>")
     return "\n".join(L)
