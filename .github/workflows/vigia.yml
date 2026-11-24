@@ -21,6 +21,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
+  id-token: write   # prova pra Cloudflare que é este repositório (chave da SerpAPI)
   contents: write   # salva as rotas mudadas por comando do Telegram
   actions: write    # /agora e refazer a busca que o GitHub pulou
 
@@ -41,10 +42,15 @@ jobs:
           path: dados/vigia.json
           key: vigia-${{ github.run_id }}
           restore-keys: vigia-
+      - name: Chave da SerpAPI (guardada na Cloudflare)
+        run: |
+          OIDC=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=quackvoo" | python -c "import json,sys;print(json.load(sys.stdin).get('value',''))")
+          K=$(curl -s -f -H "Authorization: Bearer $OIDC" https://quackvoo.quackvoo-neto.workers.dev/chave-serp || true)
+          if [ ${#K} -ge 32 ]; then echo "::add-mask::$K"; echo "SERPAPI_KEY_CF=$K" >> "$GITHUB_ENV"; echo "chave ok"; else echo "sem chave na Cloudflare"; fi
       - name: Vigiar
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY || env.SERPAPI_KEY_CF }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GITHUB_TOKEN: ${{ github.token }}

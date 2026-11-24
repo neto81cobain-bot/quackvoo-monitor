@@ -11,6 +11,10 @@ on:
         type: boolean
         default: true
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   comparar:
     runs-on: ubuntu-latest
@@ -21,10 +25,15 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install requests PyYAML "flights @ git+https://github.com/punitarani/fli.git"
+      - name: Chave da SerpAPI (guardada na Cloudflare)
+        run: |
+          OIDC=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=quackvoo" | python -c "import json,sys;print(json.load(sys.stdin).get('value',''))")
+          K=$(curl -s -f -H "Authorization: Bearer $OIDC" https://quackvoo.quackvoo-neto.workers.dev/chave-serp || true)
+          if [ ${#K} -ge 32 ]; then echo "::add-mask::$K"; echo "SERPAPI_KEY_CF=$K" >> "$GITHUB_ENV"; echo "chave ok"; else echo "sem chave na Cloudflare"; fi
       - name: Comparar
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           ROTA: ${{ inputs.rota }}
-          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY || env.SERPAPI_KEY_CF }}
         run: |
           if [ "$ROTA" = "serp" ]; then python testar_serp.py; elif [ "$ROTA" = "links" ]; then python testar_links.py; elif [ "$ROTA" = "monitor" ]; then python monitor.py --teste; else python comparar_fontes.py $ROTA ${{ inputs.apify && ' ' || '--sem-apify' }}; fi

@@ -15,6 +15,23 @@ async function acordarVigia(env, inputs) {
   });
 }
 
+// O GitHub Actions prova quem é com um token OIDC assinado pelo próprio GitHub; só o quackvoo-monitor recebe a chave.
+const b64url = (t) => Uint8Array.from(atob(t.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(t.length / 4) * 4, "=")), (c) => c.charCodeAt(0));
+async function githubAssinou(jwt) {
+  try {
+    const [h, p, sig] = jwt.split(".");
+    const cab = JSON.parse(new TextDecoder().decode(b64url(h)));
+    const dados = JSON.parse(new TextDecoder().decode(b64url(p)));
+    if (dados.iss !== "https://token.actions.githubusercontent.com" || dados.aud !== "quackvoo"
+        || dados.repository !== REPO || !(dados.exp * 1000 > Date.now())) return false;
+    const jwks = await (await fetch("https://token.actions.githubusercontent.com/.well-known/jwks")).json();
+    const jwk = jwks.keys.find((k) => k.kid === cab.kid);
+    if (!jwk) return false;
+    const chave = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", chave, b64url(sig), new TextEncoder().encode(`${h}.${p}`));
+  } catch { return false; }
+}
+
 export default {
   // relógio confiável: a cada 15 min acorda o vigia (o agendamento do GitHub às vezes pula horários)
   async scheduled(evento, env, ctx) {
@@ -30,6 +47,11 @@ export default {
       const r = await acordarVigia(env, { webhook: `${url.origin}/telegram` });
       return r.ok ? txt("✅ Pedido enviado! Em ~1 minuto o bot te manda “Comandos rápidos ligados”.")
                   : txt(`❌ O GitHub recusou (${r.status}): confira se o GH_TOKEN tem Actions: Read and write no quackvoo-monitor.\n${await r.text()}`, 500);
+    }
+    if (req.method === "GET" && url.pathname === "/chave-serp") {
+      const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!env.SERPAPI_KEY || !jwt || !(await githubAssinou(jwt))) return txt("não", 403);
+      return txt(env.SERPAPI_KEY);
     }
     if (req.method !== "POST" || url.pathname !== "/telegram") return txt("QuackVoo 🦆 no ar.");
 
