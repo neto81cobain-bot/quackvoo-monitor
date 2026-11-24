@@ -1,7 +1,15 @@
-"""Teste real: /barco com as duas plataformas e paradas (não manda nada)."""
-import barcos
-for o, d in [("santarem", "oriximina"), ("oriximina", "trombetas"), ("manaus", "oriximina"), ("manaus", "parintins"), ("manaus", "terra-santa")]:
-    s = barcos.proximos(o, d, 4, paradas=True)
-    n = sum(len(v) for v in s.values()); fontes = {x.get("fonte", "Yjara") for vs in s.values() for x in vs}
-    print(f"BARCO {o}→{d}: {n} saídas, fontes={fontes}, com paradas={sum(1 for vs in s.values() for x in vs if x.get('via'))}")
-print(barcos.texto("manaus", "oriximina", barcos.proximos("manaus", "oriximina", 4, paradas=True))[:1400])
+import requests, barcos
+from datetime import date
+B = barcos.NAVEGAM
+cid = barcos._cidades_navegam()
+print("NAVIDS:", cid.get("manaus"), cid.get("parintins"), len(cid))
+datas = []
+for pg in range(1, 6):
+    j = requests.get(B + "/ecommerce/travels", params={"origin_id": cid["manaus"], "destination_id": cid["parintins"], "page": pg, "page_size": 50}, headers=barcos.UA, timeout=30).json()
+    dd = (j.get("result") or {}).get("data", [])
+    datas += [x["departure_date"][:10] for x in dd]
+    print("NAVPG", pg, len(dd), (j.get("result") or {}).get("total"))
+    if len(dd) < 10: break
+print("NAVDATAS:", sorted(set(datas))[:20])
+r = barcos.navegam("manaus", "parintins", date.today(), 14)
+print("NAVRES:", {k: len(v) for k, v in r.items()})
