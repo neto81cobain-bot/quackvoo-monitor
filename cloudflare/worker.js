@@ -207,7 +207,10 @@ async function tg(env, cfg, metodo, dados) {
   if (!cfg?.bot) return null;
   const r = await fetch(`https://api.telegram.org/bot${cfg.bot}/${metodo}`, { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dados) });
-  return r.json().catch(() => null);
+  const j = await r.json().catch(() => null);
+  if (!j?.ok && !/not modified|query is too old|query ID is invalid/.test(j?.description || ""))
+    await env.QV?.put("tg_erro", JSON.stringify({ quando: new Date().toISOString(), metodo, erro: j?.description || r.status }), { expirationTtl: 86400 * 7 });
+  return j;
 }
 const kb = (linhas) => ({ inline_keyboard: linhas.filter((l) => l?.length).map((l) => l.map(([t, v]) =>
   /^https?:/.test(v) ? { text: t, url: v } : { text: t, callback_data: v.slice(0, 64) })) });
