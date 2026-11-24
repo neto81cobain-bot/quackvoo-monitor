@@ -403,56 +403,60 @@ def mensagem_bonita(r: dict, motivos: list[str], links_cal: bool = True) -> tupl
     hh = HIST_ATUAL.get(r["nome"], {})
     L = [f"✈️ <b>{nome}</b>",
          f"<i>{tipo} · {r['adultos']} adulto{'s' if r['adultos'] > 1 else ''} · {A.d(dias[0]).strftime('%d/%m')} a {A.d(dias[-1]).strftime('%d/%m')}</i>", ""]
-    L += [_h(x) for x in motivos if x not in ("Execução manual", "Relatório da busca (sem queda desde a última)")]
-    L.append(f"💰 <b>{_link(m['url'], A.reais(m['preco']))}</b> · {_dia(m['dia'])}")
+    # padrão visual (igual ao do barco): título · subtítulo · por que avisei · 💚 melhor · blocos curtos "dia · preço"
+    mot = [_h(x) for x in motivos if x not in ("Execução manual", "Relatório da busca (sem queda desde a última)")]
+    if mot:
+        L += mot + [""]
+    L.append(f"💚 <b>Melhor: {_link(m['url'], A.reais(m['preco']))}</b> · {_dia(m['dia'])}")
     voo = r.get("voo")
     if voo and voo.get("cia"):
-        L.append(f"<i>{_h(voo['cia'])} · {voo['saida'][-5:]} → {voo['chegada'][-5:]} · " + ("direto" if not voo["paradas"] else f"{voo['paradas']} parada{'s' if voo['paradas'] > 1 else ''}") + "</i>")
-    spark = I.sparkline([e["melhor"] for e in hh.get("execucoes", [])] + [m["preco"]])
-    if spark:
-        L.append(f"<code>{spark}</code> <i>últimas buscas</i>")
+        L.append(f"      └ {_h(voo['cia'])} · {voo['saida'][-5:]} → {voo['chegada'][-5:]} · "
+                 + ("direto" if not voo["paradas"] else f"{voo['paradas']} parada{'s' if voo['paradas'] > 1 else ''}"))
     v = r.get("veredito")
     if v:
-        L += ["", f"{v['emoji']} <b>{v['rotulo']}</b> — {_h(v['conselho'])}", f"<i>{_h(' · '.join(v['detalhes'][:3]))}</i>"]
+        L.append(f"{v['emoji']} <b>{v['rotulo']}</b> · {_h(v['conselho'])}")
+        if v.get("detalhes"):
+            L.append(f"      └ <i>{_h(v['detalhes'][0])}</i>")
+    spark = I.sparkline([e["melhor"] for e in hh.get("execucoes", [])] + [m["preco"]])
+    if spark:
+        L.append(f"📈 <code>{spark}</code> <i>últimas buscas</i>")
+
+    # outros dias baratos: um por linha, "dia · preço"
+    top = sorted(cal.items(), key=lambda kv: (kv[1]["preco"], kv[0]))
+    outros = [(k, x) for k, x in top if k != m["dia"]][:5]
+    if outros:
+        L += ["", "<b>📆 Outros dias baratos</b>"]
+        L += [f"{_dia(k)} · {_link(x['url'], A.reais(x['preco']))}" for k, x in outros]
 
     # onde comprar (vendedores do Google pro dia mais barato)
     vend = r.get("vendedores") or []
     if vend:
-        L += ["", f"🛒 <b>Onde comprar</b> ({_dia(m['dia'])})"]
-        for x in vend[:6]:
+        L += ["", f"<b>🛒 Onde comprar</b> <i>({_dia(m['dia'])})</i>"]
+        for x in sorted(vend[:6], key=lambda x: x.get("preco") or 9e9):
             alerta = " ⚠️" if x["vendedor"].lower().startswith(VENDEDORES_RJ) else ""
-            L.append(f"• {_link(x['url'], _h(x['vendedor']))} {A.reais(x['preco']) if x.get('preco') else ''}{alerta}")
+            L.append(f"{_h(x['vendedor'])} · {_link(x['url'], A.reais(x['preco']) if x.get('preco') else 'abrir')}{alerta}")
 
-    # dias mais baratos, agrupados por preço e clicáveis
-    top = sorted(cal.items(), key=lambda kv: (kv[1]["preco"], kv[0]))[:8]
-    grupos: dict = {}
-    for k, x in top:
-        grupos.setdefault(x["preco"], []).append((k, x))
-    L += ["", "📆 <b>Dias mais baratos</b>"]
-    for preco, itens in list(grupos.items())[:3]:
-        L.append(f"<b>{A.reais(preco)}</b>  " + " · ".join(_link(x["url"], _dia(k)) for k, x in sorted(itens)[:5]))
-
+    # dicas: semana, feriados, escala por conta própria
     per = r.get("periodo")
     fer = I.feriados_no_periodo(dias[0], dias[-1])
     extras = []
     if per and per["inicio"] in cal:
-        extras.append(f"🗓️ Melhor semana: {_link(cal[per['inicio']]['url'], A.d(per['inicio']).strftime('%d/%m') + ' a ' + A.d(per['fim']).strftime('%d/%m'))} · média {A.reais(per['media'])}")
+        extras.append(f"🗓️ Melhor semana: {A.d(per['inicio']).strftime('%d/%m')} a {A.d(per['fim']).strftime('%d/%m')} · média {_link(cal[per['inicio']]['url'], A.reais(per['media']))}")
     for kf, nome_f in fer[:3]:
         janela = {x: y for x, y in cal.items() if 0 <= (A.d(kf) - A.d(x)).days <= 2}
         if janela:
             kk, vv = min(janela.items(), key=lambda kv: kv[1]["preco"])
-            extras.append(f"🎉 {nome_f} ({A.d(kf).strftime('%d/%m')}): {_link(vv['url'], A.reais(vv['preco']))} saindo {_dia(kk)}")
-    if extras:
-        L += [""] + extras
-
+            extras.append(f"🎉 {nome_f}: {_dia(kk)} · {_link(vv['url'], A.reais(vv['preco']))}")
     c = r.get("conexao")
     if c and c.get("economia", 0) > 0 and "p1" in (c.get("ida") or {}):
         ida, hub = c["ida"], c["hub"]
-        L += ["", f"🔀 <b>Escala por conta própria: {A.reais(c['total'])}</b> (economia de {A.reais(c['economia'])})",
-              _link(ida["p1"]["url"], f"{r['origem']}→{hub} {_dia(c['dia'])}") + f" {A.reais(ida['p1']['preco'])}  +  "
-              + _link(ida["p2"]["url"], f"{hub}→{r['destino']} {_dia(ida['data2'])}") + f" {A.reais(ida['p2']['preco'])}"]
-        L += [f"<i>{_h(x)}</i>" for x in c.get("horarios", [])]
-        L.append("<i>Passagens separadas: deixe 4 h+ de folga ou durma na escala.</i>")
+        extras.append(f"🔀 Escala própria em {hub}: <b>{A.reais(c['total'])}</b> (−{A.reais(c['economia'])})")
+        extras.append(f"      └ {r['origem']}→{hub} {_dia(c['dia'])} · " + _link(ida["p1"]["url"], A.reais(ida['p1']['preco'])))
+        extras.append(f"      └ {hub}→{r['destino']} {_dia(ida['data2'])} · " + _link(ida["p2"]["url"], A.reais(ida['p2']['preco'])))
+        extras += [f"      └ <i>{_h(x)}</i>" for x in c.get("horarios", [])]
+        extras.append("      └ <i>passagens separadas: deixe 4 h+ de folga</i>")
+    if extras:
+        L += ["", "<b>💡 Dicas</b>"] + extras
 
     # outros sites com a mesma busca pronta (recolhido)
     sites = I.links_sites(r["origem"], r["destino"], m["dia"], r["noites"], r["adultos"])
@@ -477,7 +481,7 @@ def mensagem_bonita(r: dict, motivos: list[str], links_cal: bool = True) -> tupl
     det += ["", "<b>Calendário</b> <i>(toque num 🟩 pra abrir o dia)</i>" if links_cal else "<b>Calendário</b>", calendario]
     L += ["", "<blockquote expandable>" + "\n".join(blocos) + "</blockquote>",
           "<blockquote expandable>" + "\n".join(det) + "</blockquote>",
-          "<i>Preços com taxas. Confira antes de pagar.</i>"]
+          "<i>Toque no preço pra abrir · preços com taxas, confira antes de pagar</i>"]
 
     i = r.get("indice", 1)
     alvo = max(100, int(m["preco"] * 0.9 // 50 * 50))

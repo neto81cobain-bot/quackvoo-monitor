@@ -223,35 +223,53 @@ def _rodape(origem, destino, agenda) -> str:
     L = []
     ag = contatos(agenda, origem, destino)
     if ag:
-        L += ["", "📒 <b>Também pergunte</b>"] + [f" {c['nome']} · <a href=\"{wa(c['whatsapp'])}\">WhatsApp</a>" for c in ag[:6]]
-    L += ["", f"<i>Toque no preço pra comprar. Dúvida: <a href=\"{wa(WA_YJARA)}\">Yjara</a> · <a href=\"{wa(WA_NAVEGAM)}\">Navegam</a></i>"]
-    return "\n".join(L)
+        L += ["", "📒 <b>Também pergunte</b>"] + [f"💬 <a href=\"{wa(c['whatsapp'])}\">{c['nome']}</a>" for c in ag[:6]]
+    L += ["", f"<i>🚤 lancha · ⛴️ barco · toque no preço pra comprar · ajuda: <a href=\"{wa(WA_YJARA)}\">Yjara</a> · <a href=\"{wa(WA_NAVEGAM)}\">Navegam</a></i>"]
+    return "\n" + "\n".join(L)
+
+
+_PEQ = {"do", "da", "de", "dos", "das", "e"}
+_ROM = re.compile(r"^(i|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii)$", re.I)
+
+
+def nome_barco(n: str) -> str:
+    """'LM LADY SAPHIRA' → 'Lady Saphira'; 'FB OGP III' → 'OGP III'."""
+    p = re.sub(r"^\s*(l/?m|f/?b|n/?m|b/?m|e/?m)\.?\s+", "", str(n or ""), flags=re.I).split()
+    out = []
+    for i, w in enumerate(p):
+        if _ROM.match(w): out.append(w.upper())
+        elif len(w) <= 3 and w.lower() not in _PEQ and w.isupper(): out.append(w)
+        elif w.lower() in _PEQ and i: out.append(w.lower())
+        else: out.append(w[:1].upper() + w[1:].lower())
+    return " ".join(out)
+
+
+def icone(v: dict) -> str:
+    return "🚤" if re.search(r"lancha|expresso|speed|jato|\blm\b|l/m", f"{v.get('tipo', '')} {v.get('embarcacao', '')}", re.I) else "⛴️"
 
 
 def texto(origem: str, destino: str, saidas: dict[str, list[dict]], agenda=None) -> str:
-    """Mensagem do Telegram: por dia, cada saída com lancha, empresa, horário e preço (o preço abre a compra)."""
+    """Mesmo padrão do Worker: título · período · 💚 mais barato · por dia: ícone hora · preço · duração / └ barco."""
     nome_o, nome_d = nome(slug(origem)), nome(slug(destino))
+    L = [f"🚤 <b>{nome_o} → {nome_d}</b>"]
     if not saidas:
-        return (f"🚤 <b>{nome_o} → {nome_d}</b>\nNão achei saídas à venda online nesses dias.\n"
-                "<i>Procurei na Yjara e na Navegam. A venda online costuma abrir 5 dias antes; lancha pequena vende no porto ou pelo WhatsApp.</i>"
-                + _rodape(origem, destino, agenda))
-    todos = [v for vs in saidas.values() for v in vs]
-    menor = min(todos, key=lambda v: v["preco"])
-    L = [f"🚤 <b>{nome_o} → {nome_d}</b>", f"<i>{len(todos)} saídas · a partir de {_rs(menor['preco'])}</i>", ""]
+        L += ["<i>nenhuma saída à venda online nesses dias</i>", "", "A venda online costuma abrir uns 5 dias antes. Lancha pequena vende no porto ou pelo WhatsApp."]
+        return "\n".join(L) + _rodape(origem, destino, agenda)
+    todos = [(d_, v) for d_, vs in saidas.items() for v in vs]
+    dmen, menor = min(todos, key=lambda x: x[1]["preco"])
+    dias = list(saidas)
+    sem = lambda k: f"{SEMANA[date.fromisoformat(k).weekday()]} {date.fromisoformat(k):%d/%m}"
+    L += [f"<i>{sem(dias[0])}" + (f" a {sem(dias[-1])}" if len(dias) > 1 else "") + f" · {len(todos)} saídas</i>", "",
+          f"💚 <b>Mais barato: <a href=\"{menor['url']}\">{_rs(menor['preco'])}</a></b> · {sem(dmen)} {menor['horario'][-5:]} · {nome_barco(menor['embarcacao'])}"]
     for dia, vs in saidas.items():
-        d = date.fromisoformat(dia)
-        L.append(f"<b>{SEMANA[d.weekday()]} {d:%d/%m}</b>")
+        L += ["", f"<b>{sem(dia)}</b>"]
         for v in vs:
-            hora = v["horario"][-5:]
-            extra = ""
             m = re.fullmatch(r"(\d{1,2})[:Hh](\d{2})", str(v.get("duracao") or ""))
-            if m:
-                extra = f" · ⏱ {int(m[1])}h" + (m[2] if m[2] != "00" else "")
-            barato = " 💚" if v["preco"] == menor["preco"] else ""
-            via = f"\n      <i>para antes em {', '.join(v['via'])}</i>" if v.get("via") else ""
-            comida = f" (+{_rs(v['comida'])} comida)" if v.get("comida") else ""
-            zap = f" · <a href=\"{v['zap']}\">WhatsApp</a>" if v.get("zap") else ""
-            L.append(f"  {hora} · {v['embarcacao'] or v['tipo']} <i>({v['empresa'] or v['tipo']})</i> · "
-                     f"<a href=\"{v['url']}\">{_rs(v['preco'])}</a>{comida}{barato}{extra}{zap}{via}")
-        L.append("")
-    return "\n".join(L).rstrip() + "\n" + _rodape(origem, destino, agenda)
+            dur = f" · {int(m[1])}h" + (m[2] if m[2] != "00" else "") if m else ""
+            comida = f" + {_rs(v['comida'])} comida" if v.get("comida") else ""
+            L.append(f"{icone(v)} <b>{v['horario'][-5:]}</b> · <a href=\"{v['url']}\">{_rs(v['preco'])}</a>{comida}{dur}" + (" 💚" if v["preco"] == menor["preco"] else ""))
+            det = [nome_barco(v["embarcacao"] or v["tipo"])]
+            if v.get("via"): det.append(f"<i>para em {', '.join(v['via'])}</i>")
+            if v.get("zap"): det.append(f"<a href=\"{v['zap']}\">WhatsApp</a>")
+            L.append("      └ " + " · ".join(det))
+    return "\n".join(L) + _rodape(origem, destino, agenda)

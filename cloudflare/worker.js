@@ -40,25 +40,33 @@ const nome = (s) => NOMES[s] || s.replace(/-/g, " ").replace(/\b\w/g, (l) => l.t
 const NAV_FIXO = { manaus: 1, parintins: 27, "terra-santa": 24, faro: 21, nhamunda: 20, santarem: 69, juruti: 72, obidos: 73 };
 
 // "Oriximiná Santarém 12/12", "Oriximiná para Terra Santa", "orx > stm" → {o, d, dia}
+function dataBR(s) {
+  const m = String(s).match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (!m) return null;
+  const hoje = hojeBR();
+  const ano = m[3] ? (m[3].length === 2 ? "20" + m[3] : m[3]) : hoje.slice(0, 4);
+  let dia = `${ano}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  if (!m[3] && dia < hoje) dia = `${+ano + 1}${dia.slice(4)}`;
+  return dia;
+}
+// "Oriximiná Santarém 12/12", "Oriximiná para Terra Santa", "orx > stm 12/12 a 15/12" → {o, d, dia, n}
 function trecho(t) {
   let a = String(t).replace(/^\/barco(@\w+)?/i, "").trim().split(/\s+/).filter(Boolean);
-  let dia = null;
-  const ult = a[a.length - 1] || "";
-  let m = ult.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
-  if (m) {
-    a.pop();
-    const hoje = hojeBR();
-    let ano = m[3] ? (m[3].length === 2 ? "20" + m[3] : m[3]) : hoje.slice(0, 4);
-    dia = `${ano}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
-    if (!m[3] && dia < hoje) dia = `${+ano + 1}${dia.slice(4)}`;
+  let dia = null, n = null;
+  const datas = [];
+  while (a.length && (dataBR(a[a.length - 1]) || /^(a|até|ate|-)$/i.test(a[a.length - 1]))) { const x = a.pop(); if (dataBR(x)) datas.unshift(dataBR(x)); }
+  if (datas.length) {
+    dia = datas[0];
+    if (datas[1]) n = Math.round((Date.parse(datas[1]) - Date.parse(datas[0])) / 864e5) + 1;
   }
+  const res = (o, d) => ({ o, d, dia, n: n && n > 0 ? Math.min(n, 7) : null });
   const junto = a.join(" ");
   const partes = junto.split(/\s*(?:>|→|->|,|\bpara\b|\bpra\b|\bate\b|\baté\b|\bx\b)\s*/i).filter(Boolean);
-  if (partes.length === 2) return { o: slug(partes[0]), d: slug(partes[1]), dia };
+  if (partes.length === 2) return res(slug(partes[0]), slug(partes[1]));
   const tk = a.map(slug);
   for (let i = 1; i < tk.length; i++) {
     const o = slug(tk.slice(0, i).join("-")), d = slug(tk.slice(i).join("-"));
-    if (CIDADES.includes(o) && CIDADES.includes(d)) return { o, d, dia };
+    if (CIDADES.includes(o) && CIDADES.includes(d)) return res(o, d);
   }
   return null;
 }
@@ -100,7 +108,7 @@ async function diaYjara(env, chave, o, d, dia) {
   return lista.map((x) => {
     const preco = +x.valor_num || 0;
     const via = (grupos[x.id_viagem] || []).filter(([n, p]) => p < preco && slug(n) !== d).sort((a, b) => a[1] - b[1]).map(([n]) => n);
-    return { id: String(x.id_viagem || x.id), barco: limpa(x.embarcacao) || x.tipo_embarcacao || "", empresa: (x.empresa?.nome_fantasia || "").trim(),
+    return { id: String(x.id_viagem || x.id), barco: limpa(x.embarcacao) || x.tipo_embarcacao || "", tipo: `${x.tipo_embarcacao || ""} ${x.embarcacao || ""}`, empresa: (x.empresa?.nome_fantasia || "").trim(),
              hora: String(x.horario || "").slice(-5), dur: x.tempo_viagem, preco, via: [...new Set(via)], url: linkYj(o, d, dia), fonte: "Yjara" };
   });
 }
@@ -136,7 +144,7 @@ async function navegam(env, o, d, ini, dias) {
       const h = (Date.parse(x.arrival_date) - Date.parse(x.departure_date)) / 36e5;
       if (h > 0) dur = `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`;
       const b = x.boat || {};
-      (out[dia] ||= []).push({ id: "nav" + x.id, barco: b.name || "", empresa: "Navegam", hora: s.slice(11, 16), dur,
+      (out[dia] ||= []).push({ id: "nav" + x.id, barco: b.name || "", empresa: "Navegam", tipo: `${b.type || ""} ${b.name || ""}`, hora: s.slice(11, 16), dur,
         preco: +(x.sale_cost || x.transportation_cost || 0), comida: +(x.feeding_cost || 0), zap: b.whatsapp_sale === true ? `${wa(WA_NAV)}?text=${encodeURIComponent(`Oi! Quero passagem no ${b.name || "barco"} saindo ${dia.slice(8, 10)}/${dia.slice(5, 7)}`)}` : "",
         url: `https://navegam.com.br/busca?origem=${io}&destino=${id}&ida=${dia}&type=ida&passageiros=1`, fonte: "Navegam" });
     }
@@ -171,35 +179,76 @@ function contatos(cfg, o, d) {
   return (cfg?.agenda || []).filter((c) => { const a = [slug(c.de), slug(c.para)]; return (a[0] === o && a[1] === d) || (a[0] === d && a[1] === o) || (!c.para && a[0] && [o, d].includes(a[0])); });
 }
 
-function textoBarcos(o, d, ini, saidas, cfg) {
+// ---------------------------------------------------------------- padrão visual (igual pra barco e avião)
+// título · subtítulo em itálico · 💚 melhor opção · blocos por dia · cada item: ícone hora · preço · duração / └ detalhe
+const PEQUENAS = new Set(["do", "da", "de", "dos", "das", "e"]);
+const ROMANOS = /^(i|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii)$/i;
+function nomeBarco(n) {
+  const p = String(n || "").replace(/^\s*(l\/?m|f\/?b|n\/?m|b\/?m|e\/?m)\.?\s+/i, "").trim().split(/\s+/);
+  return p.map((w, i) => ROMANOS.test(w) ? w.toUpperCase() : (w.length <= 3 && !PEQUENAS.has(w.toLowerCase()) && /^[A-Z]+$/.test(w)) ? w
+    : PEQUENAS.has(w.toLowerCase()) && i ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+}
+const icone = (v) => /lancha|expresso|speed|jato|\blm\b|l\/m/i.test(`${v.tipo || ""} ${v.barco || ""}`) ? "🚤" : "⛴️";
+function duracao(d) { const m = String(d || "").match(/^(\d{1,2})[:hH](\d{2})/); return m ? `${+m[1]}h${m[2] !== "00" ? m[2] : ""}` : ""; }
+const visivel = (h) => h.replace(/<[^>]+>/g, "").replace(/&(amp|lt|gt|quot);/g, "x").length;
+
+function textoBarcos(o, d, ini, n, saidas, cfg) {
   const todos = Object.values(saidas).flat();
+  const fim = maisDias(ini, n - 1);
+  const periodo = n === 1 ? diaBR(ini) : `${diaBR(ini)} a ${diaBR(fim)}`;
   const L = [`🚤 <b>${nome(o)} → ${nome(d)}</b>`];
   if (!todos.length) {
-    L.push(`<i>${diaBR(ini)} a ${diaBR(maisDias(ini, DIAS - 1))}: nada à venda online.</i>`, "",
-           "Procurei na Yjara e na Navegam. A venda online costuma abrir 5 dias antes; lancha pequena vende no porto ou pelo WhatsApp.");
+    L.push(`<i>${periodo} · nenhuma saída à venda online</i>`, "",
+           "A venda online costuma abrir uns 5 dias antes. Lancha pequena vende no porto ou pelo WhatsApp 👇");
   } else {
-    const menor = Math.min(...todos.map((v) => v.preco));
-    L.push(`<i>${todos.length} saídas · a partir de ${rs(menor)}</i>`);
+    const menor = todos.reduce((a, b) => (b.preco < a.preco ? b : a));
+    const diaMenor = Object.keys(saidas).find((k) => saidas[k].includes(menor));
+    L.push(`<i>${periodo} · ${todos.length} ${todos.length > 1 ? "saídas" : "saída"}</i>`, "",
+           `💚 <b>Mais barato: <a href="${menor.url}">${rs(menor.preco)}</a></b> · ${diaBR(diaMenor)} ${menor.hora} · ${esc(nomeBarco(menor.barco))}`);
+    const blocos = [];
     for (const [dia, vs] of Object.entries(saidas)) {
-      L.push("", `<b>${diaBR(dia)}</b>`);
+      const B = ["", `<b>${diaBR(dia)}</b>`];
       for (const v of vs) {
-        const m = String(v.dur || "").match(/^(\d{1,2})[:hH](\d{2})/);
-        const dur = m ? ` · ${+m[1]}h${m[2] !== "00" ? m[2] : ""}` : "";
-        let l = ` ${v.hora} · ${esc(v.barco)}${v.empresa && v.empresa !== "Navegam" ? ` <i>(${esc(v.empresa)})</i>` : ""} · <a href="${v.url}">${rs(v.preco)}</a>`
-          + (v.comida ? ` +${rs(v.comida)} comida` : "") + (v.preco === menor ? " 💚" : "") + dur;
-        if (v.zap) l += ` · <a href="${v.zap}">WhatsApp</a>`;
-        if (v.via?.length) l += `\n      <i>para antes em ${esc(v.via.join(", "))}</i>`;
-        L.push(l);
+        const dur = duracao(v.dur);
+        B.push(`${icone(v)} <b>${v.hora}</b> · <a href="${v.url}">${rs(v.preco)}</a>` + (v.comida ? ` + ${rs(v.comida)} comida` : "") + (dur ? ` · ${dur}` : "")
+               + (v.preco === menor.preco ? " 💚" : ""));
+        const det = [esc(nomeBarco(v.barco))];
+        if (v.via?.length) det.push(`<i>para em ${esc(v.via.join(", "))}</i>`);
+        if (v.zap) det.push(`<a href="${v.zap}">WhatsApp</a>`);
+        B.push(`      └ ${det.join(" · ")}`);
       }
+      blocos.push(B.join("\n"));
     }
+    let corpo = "", cortou = 0;
+    for (const b of blocos) { if (visivel(L.join("\n") + corpo + b) > 3300) { cortou++; continue; } corpo += "\n" + b; }
+    L.push(corpo.slice(1));
+    if (cortou) L.push("", `<i>+${cortou} dia(s) não couberam: toque em Mais ▶️</i>`);
   }
   const ag = contatos(cfg, o, d);
   if (ag.length) {
     L.push("", "📒 <b>Também pergunte</b>");
-    for (const c of ag.slice(0, 6)) L.push(` ${esc(c.nome)} · <a href="${wa(c.whatsapp)}">WhatsApp</a>`);
+    for (const c of ag.slice(0, 6)) L.push(`💬 <a href="${wa(c.whatsapp)}">${esc(c.nome)}</a>`);
   }
-  L.push("", `<i>Toque no preço pra comprar. Dúvida na compra: <a href="${wa(WA_YJARA)}">Yjara</a> · <a href="${wa(WA_NAV)}">Navegam</a></i>`);
+  L.push("", `<i>🚤 lancha · ⛴️ barco · toque no preço pra comprar · ajuda: <a href="${wa(WA_YJARA)}">Yjara</a> · <a href="${wa(WA_NAV)}">Navegam</a></i>`);
   return L.join("\n");
+}
+
+// calendário em botões: escolhe a data sem digitar
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+function calendario(ctx, mes, minimo) {
+  const [a, m] = mes.split("-").map(Number);
+  const primeiro = new Date(Date.UTC(a, m - 1, 1)), dias = new Date(Date.UTC(a, m, 0)).getUTCDate();
+  const ant = new Date(Date.UTC(a, m - 2, 1)).toISOString().slice(0, 7), prox = new Date(Date.UTC(a, m, 1)).toISOString().slice(0, 7);
+  const linhas = [[[ant >= minimo.slice(0, 7) ? "◀️" : " ", ant >= minimo.slice(0, 7) ? `c|${ctx}|${ant}` : "x"], [`${MESES[m - 1]} ${a}`, "x"], ["▶️", `c|${ctx}|${prox}`]],
+                  ["S", "T", "Q", "Q", "S", "S", "D"].map((l) => [l, "x"])];
+  let linha = Array.from({ length: (primeiro.getUTCDay() + 6) % 7 }, () => [" ", "x"]);
+  for (let dd = 1; dd <= dias; dd++) {
+    const iso = `${mes}-${String(dd).padStart(2, "0")}`;
+    linha.push(iso < minimo ? ["·", "x"] : [String(dd), `k|${ctx}|${iso}`]);
+    if (linha.length === 7) { linhas.push(linha); linha = []; }
+  }
+  if (linha.length) { while (linha.length < 7) linha.push([" ", "x"]); linhas.push(linha); }
+  return linhas.filter((l, i) => i < 2 || l.some(([, v]) => v !== "x"));  // some semanas que já passaram
 }
 
 // ---------------------------------------------------------------- Telegram
@@ -236,7 +285,7 @@ function telas(cfg, tela) {
       + (r.ativa === false ? " · ⏸️ pausada" : r.pausada_ate ? ` · ⏸️ até ${r.pausada_ate.slice(8, 10)}/${r.pausada_ate.slice(5, 7)}` : "")));
     L.push("", "<i>Eu te aviso sozinho quando o preço cai. Aqui você pede na hora:</i>");
     const b = [[["📊 Preços agora", "/status"], ["🔎 Buscar tudo agora", "/agora"]],
-               [["📅 Preço numa data", "p:data"], ["🎯 Mudar alvo", "p:alvo"]]];
+               [["📅 Preço numa data", `c|a.0|${String((rotas[0]?.ida_entre || [])[0] || hojeBR()).slice(0, 7) < hojeBR().slice(0, 7) ? hojeBR().slice(0, 7) : String((rotas[0]?.ida_entre || [])[0] || hojeBR()).slice(0, 7)}`], ["🎯 Mudar alvo", "p:alvo"]]];
     rotas.slice(0, 3).forEach((r, i) => {
       const pausada = r.ativa === false || r.pausada_ate;
       b.push([pausada ? [`▶️ Reativar ${rotas.length > 1 ? i + 1 : "avisos"}`, `/ativar ${i + 1}`] : [`⏸️ Pausar ${rotas.length > 1 ? i + 1 + " " : ""}7 dias`, `/pausar ${i + 1} 7`]]);
@@ -288,7 +337,7 @@ function telas(cfg, tela) {
 }
 
 const PEDIDOS = {
-  trecho: "✍️ Escreva o trecho do barco, assim:\n<code>Oriximiná Terra Santa</code>\n<code>Santarém para Óbidos 12/12</code>",
+  trecho: "✍️ Escreva o trecho (e, se quiser, as datas):\n<code>Oriximiná Terra Santa</code>\n<code>Santarém para Óbidos 12/12</code>\n<code>Oriximiná Santarém 20/12 a 24/12</code>",
   contato: "📒 Mande o contato assim (separado por vírgula):\n<code>Lancha Fulano, 93 99999-9999, Oriximiná, Santarém</code>\n<i>O último trecho é opcional: só a cidade já serve.</i>",
   alvo: "🎯 Escreva o novo preço-alvo (ex.: <code>1800</code>). Com mais de uma rota: <code>2 1800</code>",
   data: "📅 Escreva a data (ex.: <code>29/05</code> ou ida e volta <code>29/05 05/06</code>)",
@@ -303,17 +352,18 @@ async function acordarVigia(env, inputs) {
 }
 const pedirVigia = (env, chat, texto) => acordarVigia(env, { comando: JSON.stringify({ chat, texto }) });
 
-async function barco(env, cfg, chat, msgId, o, d, ini) {
-  const r0 = await mostrar(env, cfg, chat, msgId, `🔎 Procurando <b>${nome(o)} → ${nome(d)}</b> a partir de ${diaBR(ini)}…`);
+async function barco(env, cfg, chat, msgId, o, d, ini, n = DIAS) {
+  n = Math.max(1, Math.min(7, +n || DIAS));
+  const r0 = await mostrar(env, cfg, chat, msgId, `🔎 Procurando <b>${nome(o)} → ${nome(d)}</b>…\n<i>${n === 1 ? diaBR(ini) : diaBR(ini) + " a " + diaBR(maisDias(ini, n - 1))}</i>`);
   msgId = msgId || r0?.result?.message_id;
-  let saidas = {};
-  let erro = "";
-  try { saidas = await buscarBarcos(env, o, d, ini, DIAS); } catch (e) { erro = e.message; }
-  const t = erro ? `🚤 <b>${nome(o)} → ${nome(d)}</b>\n⚠️ As lojas não responderam agora (${esc(erro)}). Tente de novo em instantes.` : textoBarcos(o, d, ini, saidas, cfg);
-  const prox = maisDias(ini, DIAS), hoje = hojeBR();
+  let saidas = {}, erro = "";
+  try { saidas = await buscarBarcos(env, o, d, ini, n); } catch (e) { erro = e.message; }
+  const t = erro ? `🚤 <b>${nome(o)} → ${nome(d)}</b>\n⚠️ As lojas não responderam agora (${esc(erro)}). Tente de novo em instantes.` : textoBarcos(o, d, ini, n, saidas, cfg);
+  const hoje = hojeBR();
   const vigiado = (cfg.barcos || []).some((x) => slug(x.de) === o && slug(x.para) === d);
-  const b = [[...(ini > hoje ? [["◀️ Antes", `b|${o}|${d}|${ini < maisDias(hoje, DIAS) ? hoje : maisDias(ini, -DIAS)}`]] : []), ["Mais dias ▶️", `b|${o}|${d}|${prox}`]],
-             [["🔁 Volta", `b|${d}|${o}|${ini}`], vigiado ? ["🔔 Já vigiado", "m:bv"] : ["🔔 Avisar saídas novas", `/vigiarbarco ${o} para ${d}`]],
+  const antes = maisDias(ini, -n) < hoje ? hoje : maisDias(ini, -n);
+  const b = [[...(ini > hoje ? [["◀️ Antes", `b|${o}|${d}|${antes}|${n}`]] : []), ["📅 Datas", `c|b.${o}.${d}|${ini.slice(0, 7)}`], ["Mais ▶️", `b|${o}|${d}|${maisDias(ini, n)}|${n}`]],
+             [["🔁 Volta", `b|${d}|${o}|${ini}|${n}`], vigiado ? ["🔔 Já vigiado", "m:bv"] : ["🔔 Avisar saídas novas", `/vigiarbarco ${o} para ${d}`]],
              [["🚤 Outro trecho", "m:bc"], ...VOLTAR]];
   await mostrar(env, cfg, chat, msgId, t, b);
   const rec = [[o, d], ...(cfg.recentes || []).filter(([a, c]) => !(a === o && c === d))].slice(0, 6);
@@ -332,9 +382,39 @@ async function tratar(env, u, cfg) {
       return mostrar(env, cfg, chat, msgId, t, b);
     }
     if (v.startsWith("b|")) {
-      const [, o, d, ini] = v.split("|");
+      const [, o, d, ini, n] = v.split("|");
       await tg(env, cfg, "answerCallbackQuery", { callback_query_id: cq.id, text: "🔎 Buscando…" });
-      return barco(env, cfg, chat, msgId, o, d, ini === "0" ? hojeBR() : ini);
+      return barco(env, cfg, chat, msgId, o, d, ini === "0" || ini < hojeBR() ? hojeBR() : ini, n);
+    }
+    if (v === "x") return tg(env, cfg, "answerCallbackQuery", { callback_query_id: cq.id });
+    if (v.startsWith("c|")) {  // calendário
+      await tg(env, cfg, "answerCallbackQuery", { callback_query_id: cq.id });
+      const [, ctx, mes] = v.split("|");
+      const hoje = hojeBR();
+      if (ctx.startsWith("b.")) {
+        const [, o, d] = ctx.split(".");
+        return mostrar(env, cfg, chat, msgId, `📅 <b>${nome(o)} → ${nome(d)}</b>\nEscolha o dia da viagem:`,
+          [...calendario(ctx, mes < hoje.slice(0, 7) ? hoje.slice(0, 7) : mes, hoje), [["◀️ Voltar", `b|${o}|${d}|0`], ...VOLTAR]]);
+      }
+      const r = (cfg.rotas || [])[+ctx.slice(2) || 0];
+      if (!r) return;
+      return mostrar(env, cfg, chat, msgId, `📅 <b>${esc(r.origem)} → ${esc(r.destino)}</b>\nEscolha a data da ida (busca 1 preço na SerpAPI):`,
+        [...calendario(ctx, mes, hoje), [["✈️ Avião", "m:av"], ...VOLTAR]]);
+    }
+    if (v.startsWith("k|")) {  // dia escolhido no calendário
+      const [, ctx, dia] = v.split("|");
+      if (ctx.startsWith("b.")) {
+        await tg(env, cfg, "answerCallbackQuery", { callback_query_id: cq.id });
+        const [, o, d] = ctx.split(".");
+        return mostrar(env, cfg, chat, msgId, `📅 <b>${nome(o)} → ${nome(d)}</b>\nA partir de <b>${diaBR(dia)}</b>, quantos dias mostrar?`,
+          [[["Só esse dia", `b|${o}|${d}|${dia}|1`], ["3 dias", `b|${o}|${d}|${dia}|3`]], [["5 dias", `b|${o}|${d}|${dia}|5`], ["7 dias", `b|${o}|${d}|${dia}|7`]],
+           [["◀️ Outro dia", `c|${ctx}|${dia.slice(0, 7)}`], ...VOLTAR]]);
+      }
+      const r = (cfg.rotas || [])[+ctx.slice(2) || 0];
+      await tg(env, cfg, "answerCallbackQuery", { callback_query_id: cq.id, text: "⏳ Buscando… chega em ~1 min." });
+      await pedirVigia(env, chat, `/buscar ${r.origem} ${r.destino} ${dia.slice(8, 10)}/${dia.slice(5, 7)}/${dia.slice(0, 4)}`);
+      return mostrar(env, cfg, chat, msgId, `✈️ Buscando <b>${esc(r.origem)} → ${esc(r.destino)}</b> em ${diaBR(dia)}/${dia.slice(2, 4)}…\n<i>O preço chega numa mensagem nova em ~1 min.</i>`,
+        [[["📅 Outra data", `c|${ctx}|${dia.slice(0, 7)}`]], [["✈️ Avião", "m:av"], ...VOLTAR]]);
     }
     if (v.startsWith("p:")) {
       await tg(env, cfg, "answerCallbackQuery", { callback_query_id: cq.id });
@@ -353,7 +433,7 @@ async function tratar(env, u, cfg) {
   if (/^\/(start|menu)\b/i.test(t) || /^(menu|oi|olá|ola|bom dia|boa tarde|boa noite)$/i.test(t)) { await env.QV.delete("pedido"); return menu(); }
   if (/^\/barco\b/i.test(t)) {
     const x = trecho(t);
-    if (x) return barco(env, cfg, chat, null, x.o, x.d, x.dia || hojeBR());
+    if (x) return barco(env, cfg, chat, null, x.o, x.d, x.dia || hojeBR(), x.n || (x.dia ? 3 : DIAS));
     return mostrar(env, cfg, chat, null, PEDIDOS.trecho);
   }
   if (t.startsWith("/")) return pedirVigia(env, chat, t);
@@ -389,7 +469,7 @@ async function tratar(env, u, cfg) {
     return mostrar(env, cfg, chat, null, `🔎 Buscando ${esc(r.origem)}→${esc(r.destino)} em ${ds[0]}… chega em ~1 min.`);
   }
   const x = trecho(t);
-  if (x && (pedido === "trecho" || (CIDADES.includes(x.o) && CIDADES.includes(x.d)))) return barco(env, cfg, chat, null, x.o, x.d, x.dia || hojeBR());
+  if (x && (pedido === "trecho" || (CIDADES.includes(x.o) && CIDADES.includes(x.d)))) return barco(env, cfg, chat, null, x.o, x.d, x.dia || hojeBR(), x.n || (x.dia ? 3 : DIAS));
   if (pedido === "trecho") return mostrar(env, cfg, chat, null, "Não entendi o trecho.\n\n" + PEDIDOS.trecho);
   return menu();
 }
@@ -444,10 +524,10 @@ export default {
     if (req.method === "GET" && url.pathname === "/barco") {  // prévia pública (só dados públicos das lojas)
       const x = trecho(url.searchParams.get("t") || "");
       if (!x) return txt("use /barco?t=Oriximiná Santarém", 400);
-      const ini = x.dia || hojeBR();
-      const s = await buscarBarcos(env, x.o, x.d, ini, DIAS);
+      const ini = x.dia || hojeBR(), n = x.n || DIAS;
+      const s = await buscarBarcos(env, x.o, x.d, ini, n);
       return url.searchParams.has("json") ? new Response(JSON.stringify(s, null, 1), { headers: { "Content-Type": "application/json; charset=utf-8" } })
-                                          : txt(textoBarcos(x.o, x.d, ini, s, (await env.QV.get("cfg", "json")) || {}).replace(/<[^>]+>/g, ""));
+                                          : txt(textoBarcos(x.o, x.d, ini, n, s, (await env.QV.get("cfg", "json")) || {}).replace(/<[^>]+>/g, ""));
     }
     if (req.method === "GET" && url.pathname === "/simular") {  // teste de ponta a ponta (chave só no cofre)
       const k = await env.QV.get("sim_token");

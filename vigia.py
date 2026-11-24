@@ -452,11 +452,16 @@ def cmd(texto: str) -> None:
             if not v or not v.get("preco"):
                 enviar(f"Não achei voos {o}→{dst} em {A.br(ida)}." + ("" if SERP else " (falta a SerpAPI)")); return
             g = v.get("google", {})
-            txt = (f"🔎 <b>{o}→{dst}</b> {A.br(ida)}" + (f" ↩ {A.br(volta)}" if volta else " (só ida)") + f"\n<b>{A.reais(v['preco'])}</b> · {v['cia']}\n"
-                   f"sai {v['saida'][-5:]} · chega {v['chegada'][-5:]} · " + ("direto" if not v["paradas"] else f"{v['paradas']} parada(s)"))
-            if g.get("faixa"): txt += f"\nGoogle: normal é {A.reais(g['faixa'][0])}–{A.reais(g['faixa'][1])}"
-            if g.get("nivel"): txt += " · este está " + {"low": "🟢 BAIXO", "typical": "🟡 típico", "high": "🔴 ALTO"}.get(g["nivel"], g["nivel"])
-            enviar(txt, [[("Abrir no Google Voos", v["url"])], [(t, u) for t, u in I.links_comparar(o, dst, ida, (A.d(volta) - A.d(ida)).days if volta else 0, 1)]])
+            nivel = {"low": "🟢 <b>Preço baixo</b>", "typical": "🟡 <b>Preço normal</b>", "high": "🔴 <b>Preço alto</b>"}.get(g.get("nivel"), "")
+            L = [f"✈️ <b>{o} → {dst}</b>", f"<i>{A.br(ida)}" + (f" a {A.br(volta)} · ida e volta" if volta else " · só ida") + " · 1 adulto</i>", "",
+                 f"💚 <b>Melhor: <a href=\"{v['url']}\">{A.reais(v['preco'])}</a></b> · {v['cia']}",
+                 f"      └ {v['saida'][-5:]} → {v['chegada'][-5:]} · " + ("direto" if not v["paradas"] else f"{v['paradas']} parada(s)")]
+            if nivel or g.get("faixa"):
+                L.append((nivel + " · " if nivel else "") + (f"normal é {A.reais(g['faixa'][0])}–{A.reais(g['faixa'][1])}" if g.get("faixa") else ""))
+            L += ["", "<i>Toque no preço pra abrir no Google Voos</i>"]
+            noites = (A.d(volta) - A.d(ida)).days if volta else 0
+            sites = [(t, u) for t, u in I.links_comparar(o, dst, ida, noites, 1)]
+            enviar("\n".join(L), [sites[i:i + 3] for i in range(0, len(sites), 3)] + [[("✈️ Avião", "m:av"), ("🏠 Menu", "m")]])
         elif c == "barco":
             o, d, dia = trecho_arg(args)
             saidas = barcos.proximos(o, d, 3 if dia else 7, dia, paradas=True)
@@ -578,7 +583,7 @@ def registrar_worker(forcar=False):
     if not (u and t and CHAT):
         return
     dados = {"bot": os.getenv("TELEGRAM_BOT_TOKEN", "").strip(), "chat": CHAT,
-             "rotas": [{k: r.get(k) for k in ("nome", "origem", "destino", "preco_alvo", "ativa", "pausada_ate")} for r in cfg["rotas"]],
+             "rotas": [{k: r.get(k) for k in ("nome", "origem", "destino", "preco_alvo", "ativa", "pausada_ate", "ida_entre")} for r in cfg["rotas"]],
              "barcos": cfg.get("barcos") or [], "agenda": cfg.get("agenda") or []}
     marca = hashlib.sha256(json.dumps(dados, sort_keys=True, default=str).encode()).hexdigest()[:16]
     if not forcar and est.get("worker_marca") == marca and minutos_desde("worker_t") < 360:
@@ -707,13 +712,15 @@ def vigiar_barcos():
         m["iniciado"] = True
         m["vistos"] = dict(list(m["vistos"].items())[-300:])
         if novas or caiu:
-            L = [f"🚤 <b>{barcos.nome(b['de'])} → {barcos.nome(b['para'])}</b>"]
+            L = [f"🚤 <b>{barcos.nome(b['de'])} → {barcos.nome(b['para'])}</b>",
+                 "<i>" + " · ".join(x for x in (f"{len(novas)} saída(s) nova(s) à venda" if novas else "", f"{len(caiu)} baixou de preço" if caiu else "") if x) + "</i>", ""]
             for dia, v in novas[:6]:
-                L.append(f"🆕 {barcos.SEMANA[A.d(dia).weekday()]} {A.d(dia):%d/%m} {v['horario'][-5:]} · {v['embarcacao']} · "
-                         f"<a href=\"{v['url']}\">{barcos._rs(v['preco'])}</a>")
+                L.append(f"🆕 <b>{barcos.SEMANA[A.d(dia).weekday()]} {A.d(dia):%d/%m} {v['horario'][-5:]}</b> · <a href=\"{v['url']}\">{barcos._rs(v['preco'])}</a>")
+                L.append(f"      └ {barcos.nome_barco(v['embarcacao'])}")
             for dia, v, antes in caiu[:4]:
-                L.append(f"📉 {A.d(dia):%d/%m} {v['horario'][-5:]} · {v['embarcacao']} · <a href=\"{v['url']}\">{barcos._rs(v['preco'])}</a> (era {barcos._rs(antes)})")
-            L.append("<i>Toque no preço pra comprar.</i>")
+                L.append(f"📉 <b>{barcos.SEMANA[A.d(dia).weekday()]} {A.d(dia):%d/%m} {v['horario'][-5:]}</b> · <a href=\"{v['url']}\">{barcos._rs(v['preco'])}</a> <s>{barcos._rs(antes)}</s>")
+                L.append(f"      └ {barcos.nome_barco(v['embarcacao'])}")
+            L += ["", "<i>Toque no preço pra comprar</i>"]
             enviar("\n".join(L), [[("🔎 Ver todas as saídas", f"b|{b['de']}|{b['para']}|0"), ("🏠 Menu", "m")]], forte=bool(caiu) or len(novas) <= 3)
 
 
