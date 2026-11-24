@@ -181,7 +181,7 @@ function gravarLocal(d){ try { localStorage.setItem(CHAVE, JSON.stringify(d)); }
 function msg(t, tipo="ok"){ const m=$("msg"); m.textContent=t; m.className=tipo; m.scrollIntoView({block:"nearest",behavior:"smooth"}); }
 
 // ---------- GitHub ----------
-function con(){ return { owner:$("ghOwner").value.trim(), repo:$("ghRepo").value.trim(), token:$("ghToken").value.trim() }; }
+function con(){ return { owner:$("ghOwner").value.trim(), repo:$("ghRepo").value.trim(), token:$("ghToken").value.replace(/[\s"']/g,"") }; }
 async function gh(path, opt={}){
   const c = con();
   const r = await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/${path}`, { ...opt,
@@ -218,7 +218,16 @@ async function conectar(){
     $("badge").textContent = c.token ? "pronto para salvar" : "só leitura"; $("badge").className = "badge" + (c.token ? " on" : "");
     preencherAvisos(); render();
     $("msg").className = "";
-  } catch(e){ msg(e.message,"err"); }
+  } catch(e){
+    if (/GitHub 401/.test(e.message) && c.token){
+      // token salvo ruim: apaga, abre em só leitura e pede um novo
+      $("ghToken").value = ""; gravarLocal(con());
+      await conectar();
+      $("conexao").hidden = false;
+      return msg("O token salvo neste aparelho não vale mais (expirou, foi apagado ou colado errado). As rotas abriram em modo leitura: crie um token novo abaixo pra poder salvar.","err");
+    }
+    msg(e.message,"err");
+  }
 }
 function esquecer(){ $("ghToken").value=""; gravarLocal(con()); $("conexao").hidden=false; $("badge").textContent="só leitura"; $("badge").className="badge"; msg("Token apagado deste aparelho."); }
 
