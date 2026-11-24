@@ -70,17 +70,23 @@ def link(o: str, d: str, dia: str) -> str:
 
 def buscar(origem: str, destino: str, dia: str) -> list[dict]:
     """Saídas de um dia. dia = AAAA-MM-DD."""
-    p = {"origem": slug(origem), "destino": slug(destino), "data_hora": dia, "quantia": 1, "subdomain": "yjaraviagens",
-         "intervalo": "", "empresa": "", "tipo_comodidade_id": ""}
-    try:
-        r = requests.get(API + "/trechos-viagem", params=p, headers={**UA, "X-API-KEY": _chave()}, timeout=30)
-        j = r.json()
-    except (requests.RequestException, ValueError) as e:
-        raise ErroBarco(f"Yjara não respondeu ({str(e)[:60]})")
-    if not j.get("success"):
-        raise ErroBarco(str(j.get("message", "erro"))[:100])
+    itens = []
+    for pg in range(1, 9):  # a API pagina (às vezes 1 por página)
+        p = {"origem": slug(origem), "destino": slug(destino), "data_hora": dia, "quantia": 1, "subdomain": "yjaraviagens",
+             "intervalo": "", "empresa": "", "tipo_comodidade_id": "", "per_page": 50, "page": pg}
+        try:
+            r = requests.get(API + "/trechos-viagem", params=p, headers={**UA, "X-API-KEY": _chave()}, timeout=30)
+            j = r.json()
+        except (requests.RequestException, ValueError) as e:
+            raise ErroBarco(f"Yjara não respondeu ({str(e)[:60]})")
+        if not j.get("success"):
+            raise ErroBarco(str(j.get("message", "erro"))[:100])
+        t = j["data"]["trechos"]
+        itens += t.get("data") or []
+        if pg >= (t.get("last_page") or 1):
+            break
     out = []
-    for x in j["data"]["trechos"]["data"]:
+    for x in itens:
         emp = x.get("empresa") or {}
         saida = x.get("data_embarque") or x.get("saida")
         out.append({
@@ -94,8 +100,8 @@ def buscar(origem: str, destino: str, dia: str) -> list[dict]:
 def paradas_yjara(origem: str, dia: str) -> dict:
     """Todos os trechos vendidos saindo de `origem` no dia, agrupados por viagem: {id_viagem: [(destino, preço)]}."""
     out = {}
-    for pg in (1, 2, 3):
-        p = {"origem": slug(origem), "destino": "", "data_hora": dia, "quantia": 1, "subdomain": "yjaraviagens", "page": pg}
+    for pg in range(1, 9):
+        p = {"origem": slug(origem), "destino": "", "data_hora": dia, "quantia": 1, "subdomain": "yjaraviagens", "per_page": 50, "page": pg}
         try:
             j = requests.get(API + "/trechos-viagem", params=p, headers={**UA, "X-API-KEY": _chave()}, timeout=30).json()
             dd = j["data"]["trechos"]
@@ -159,7 +165,7 @@ def navegam(origem: str, destino: str, inicio: date, dias: int) -> dict[str, lis
                 "empresa": "Navegam", "trecho": f"{x['origin']['name']} x {x['destination']['name']}",
                 "horario": sai.strftime("%d/%m/%Y %H:%M"), "saida": x["departure_date"], "duracao": dur,
                 "preco": float(x.get("sale_cost") or x.get("transportation_cost") or 0), "comida": float(comida),
-                "zap": wa((x.get("boat") or {}).get("whatsapp_sale") or (x.get("boat") or {}).get("phone")),
+                "zap": wa(WA_NAVEGAM) if (x.get("boat") or {}).get("whatsapp_sale") is True else "",
                 "url": f"https://navegam.com.br/busca?origem={o}&destino={d}&ida={dia}&type=ida&passageiros=1", "fonte": "Navegam"})
         if len(dd) < 10 or (dd and datetime.fromisoformat(dd[-1]["departure_date"].replace("Z", "+00:00")).date() > fim):
             break
@@ -242,7 +248,7 @@ def texto(origem: str, destino: str, saidas: dict[str, list[dict]], agenda=None)
             if m:
                 extra = f" · ⏱ {int(m[1])}h" + (m[2] if m[2] != "00" else "")
             barato = " 💚" if v["preco"] == menor["preco"] else ""
-            via = f"\n      <i>passa por {', '.join(v['via'])}</i>" if v.get("via") else ""
+            via = f"\n      <i>para antes em {', '.join(v['via'])}</i>" if v.get("via") else ""
             comida = f" (+{_rs(v['comida'])} comida)" if v.get("comida") else ""
             zap = f" · <a href=\"{v['zap']}\">WhatsApp</a>" if v.get("zap") else ""
             L.append(f"  {hora} · {v['embarcacao'] or v['tipo']} <i>({v['empresa'] or v['tipo']})</i> · "

@@ -77,18 +77,24 @@ async function chaveYjara(env, nova = false) {
   await env.QV?.put("yj_key", k[1], { expirationTtl: 43200 });
   return k[1];
 }
-async function yjara(env, chave, o, d, dia, pagina = 1) {
-  const p = new URLSearchParams({ origem: o, destino: d, data_hora: dia, quantia: "1", subdomain: "yjaraviagens", page: String(pagina) });
-  const r = await fetch(`${YJ_API}/trechos-viagem?${p}`, { headers: { ...UA, "X-API-KEY": chave } });
-  if (r.status === 401 || r.status === 403) throw new Error("chave");
-  const j = await r.json().catch(() => ({}));
-  return j?.data?.trechos?.data || [];
+async function yjara(env, chave, o, d, dia, max = 6) {
+  // a API pagina (às vezes 1 por página): pede 50 e segue as páginas
+  const out = [];
+  for (let pg = 1; pg <= max; pg++) {
+    const p = new URLSearchParams({ origem: o, destino: d, data_hora: dia, quantia: "1", subdomain: "yjaraviagens", per_page: "50", page: String(pg) });
+    const r = await fetch(`${YJ_API}/trechos-viagem?${p}`, { headers: { ...UA, "X-API-KEY": chave } });
+    if (r.status === 401 || r.status === 403) throw new Error("chave");
+    const t = (await r.json().catch(() => ({})))?.data?.trechos || {};
+    out.push(...(t.data || []));
+    if (pg >= (t.last_page || 1)) break;
+  }
+  return out;
 }
 const limpa = (s) => String(s || "").replace(/\s*-\s*(Lancha|Navio|Barco|Ferry.*)$/i, "").trim();
 const linkYj = (o, d, dia) => `${YJ_SITE}/escolher-passagem/${o}/${d}/somente-ida/${dia}`;
 
 async function diaYjara(env, chave, o, d, dia) {
-  const [lista, todos] = await Promise.all([yjara(env, chave, o, d, dia), yjara(env, chave, o, "", dia).catch(() => [])]);
+  const [lista, todos] = await Promise.all([yjara(env, chave, o, d, dia), yjara(env, chave, o, "", dia, 3).catch(() => [])]);
   const grupos = {};
   for (const x of todos) (grupos[x.id_viagem] ||= []).push([String(x.trecho || "").split(" x ").pop().split("/")[0], +x.valor_num || 0]);
   return lista.map((x) => {
@@ -131,7 +137,7 @@ async function navegam(env, o, d, ini, dias) {
       if (h > 0) dur = `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`;
       const b = x.boat || {};
       (out[dia] ||= []).push({ id: "nav" + x.id, barco: b.name || "", empresa: "Navegam", hora: s.slice(11, 16), dur,
-        preco: +(x.sale_cost || x.transportation_cost || 0), comida: +(x.feeding_cost || 0), zap: wa(b.whatsapp_sale || b.phone),
+        preco: +(x.sale_cost || x.transportation_cost || 0), comida: +(x.feeding_cost || 0), zap: b.whatsapp_sale === true ? `${wa(WA_NAV)}?text=${encodeURIComponent(`Oi! Quero passagem no ${b.name || "barco"} saindo ${dia.slice(8, 10)}/${dia.slice(5, 7)}`)}` : "",
         url: `https://navegam.com.br/busca?origem=${io}&destino=${id}&ida=${dia}&type=ida&passageiros=1`, fonte: "Navegam" });
     }
     if (dd.length < 10 || (dd.length && String(dd[dd.length - 1].departure_date).slice(0, 10) > fim)) break;
@@ -182,7 +188,7 @@ function textoBarcos(o, d, ini, saidas, cfg) {
         let l = ` ${v.hora} · ${esc(v.barco)}${v.empresa && v.empresa !== "Navegam" ? ` <i>(${esc(v.empresa)})</i>` : ""} · <a href="${v.url}">${rs(v.preco)}</a>`
           + (v.comida ? ` +${rs(v.comida)} comida` : "") + (v.preco === menor ? " 💚" : "") + dur;
         if (v.zap) l += ` · <a href="${v.zap}">WhatsApp</a>`;
-        if (v.via?.length) l += `\n      <i>passa antes por ${esc(v.via.join(", "))}</i>`;
+        if (v.via?.length) l += `\n      <i>para antes em ${esc(v.via.join(", "))}</i>`;
         L.push(l);
       }
     }
@@ -438,14 +444,6 @@ export default {
       const s = await buscarBarcos(env, x.o, x.d, ini, DIAS);
       return url.searchParams.has("json") ? new Response(JSON.stringify(s, null, 1), { headers: { "Content-Type": "application/json; charset=utf-8" } })
                                           : txt(textoBarcos(x.o, x.d, ini, s, (await env.QV.get("cfg", "json")) || {}).replace(/<[^>]+>/g, ""));
-    }
-    if (req.method === "GET" && url.pathname === "/espiar") {  // TEMP: olhar dados públicos crus
-      const q = url.searchParams.get("q") || "";
-      let r;
-      if (q.startsWith("nav:")) r = await fetch(NAV + q.slice(4), { headers: UA });
-      else if (q.startsWith("yj:")) r = await fetch(YJ_API + q.slice(3), { headers: { ...UA, "X-API-KEY": await chaveYjara(env) } });
-      else return txt("q=nav:/... ou yj:/...", 400);
-      return txt((await r.text()).slice(0, 6000));
     }
     if (req.method !== "POST" || url.pathname !== "/telegram") return txt("QuackVoo 🦆 no ar.");
 
