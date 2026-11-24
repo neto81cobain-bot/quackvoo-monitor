@@ -127,8 +127,8 @@ def navegam(origem: str, destino: str, inicio: date, dias: int) -> dict[str, lis
     out = {}
     for pg in range(1, 8):
         try:
-            j = requests.get(NAVEGAM + "/ecommerce/travels", params={"origin_id": o, "destination_id": d, "page": pg, "page_size": 50},
-                             headers=UA, timeout=30).json()
+            j = requests.get(NAVEGAM + "/ecommerce/travels", params={"origin_id": o, "destination_id": d, "page": pg},
+                             headers=UA, timeout=30).json()  # 10 por página, em ordem de data
         except Exception:
             break
         dd = (j.get("result") or {}).get("data", [])
@@ -150,7 +150,7 @@ def navegam(origem: str, destino: str, inicio: date, dias: int) -> dict[str, lis
                 "horario": sai.strftime("%d/%m/%Y %H:%M"), "saida": x["departure_date"], "duracao": dur,
                 "preco": float(x.get("sale_cost") or x.get("transportation_cost") or 0), "comida": float(comida),
                 "url": f"https://navegam.com.br/busca?origem={o}&destino={d}&ida={dia}&type=ida&passageiros=1", "fonte": "Navegam"})
-        if len(dd) < 10:
+        if len(dd) < 10 or (dd and datetime.fromisoformat(dd[-1]["departure_date"].replace("Z", "+00:00")).date() > fim):
             break
     return out
 
