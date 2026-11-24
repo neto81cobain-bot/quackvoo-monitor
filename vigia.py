@@ -330,7 +330,7 @@ AJUDA = """<b>Comandos do QuackVoo</b> 🦆
 /nova MAO VVI 01/06/2027 30/06/2027 [noites] — cria rota
 /apagar 1 sim — apaga a rota
 /comprei 1 1172 29/05 — vigia 24 h pra ver se cai mais
-<i>Se tiver só uma rota, o número é opcional. Respondo em até ~15 min.</i>"""
+<i>Se tiver só uma rota, o número é opcional. Respondo em ~1 min (com o Worker da Cloudflare) ou até ~15 min sem ele.</i>"""
 COMANDOS_MENU = [("status", "Preços, recorde e créditos"), ("agora", "Busca completa agora"), ("buscar", "Preço de uma data: MAO VVI 29/05"),
                  ("calendario", "Dias baratos do mês"), ("grafico", "Evolução do preço"), ("promos", "Últimas promoções"),
                  ("rotas", "Suas rotas"), ("alvo", "Muda o preço-alvo"), ("pausar", "Pausa uma rota"), ("ativar", "Reativa uma rota"),
@@ -511,6 +511,7 @@ def comandos():
     try:
         r = avisos.tg("getUpdates", {"offset": est.get("tg_offset", 0), "timeout": 0, "allowed_updates": ["message"]})
     except Exception as e:
+        if "409" in str(e): return  # o Worker da Cloudflare já recebe os comandos na hora
         print("getUpdates:", e); return
     for u in r.get("result", []):
         est["tg_offset"] = u["update_id"] + 1
@@ -524,11 +525,30 @@ def comandos():
 
 
 # ---------------------------------------------------------------- principal
+def comando_do_worker() -> bool:
+    """Comando que chegou pelo Worker da Cloudflare (resposta rápida). Só obedece ao seu chat."""
+    bruto = os.getenv("COMANDO", "").strip()
+    if not bruto:
+        return False
+    try:
+        d = json.loads(bruto)
+    except ValueError:
+        return True
+    if str(d.get("chat")) == CHAT and str(d.get("texto", "")).startswith("/"):
+        print("comando (worker):", d["texto"])
+        cmd(d["texto"])
+    return True
+
+
 def main():
     if not os.getenv("TELEGRAM_BOT_TOKEN"):
         sys.exit("Falta TELEGRAM_BOT_TOKEN.")
-    for nome, tarefa in [("comandos", comandos), ("saúde", saude), ("compras", vigiar_compras),
-                         ("promoções", vigiar_promos), ("checagem rápida", checagem_rapida), ("comandos", comandos)]:
+    if comando_do_worker():  # rodada curta: só responde o comando
+        tarefas = []
+    else:
+        tarefas = [("comandos", comandos), ("saúde", saude), ("compras", vigiar_compras),
+                   ("promoções", vigiar_promos), ("checagem rápida", checagem_rapida), ("comandos", comandos)]
+    for nome, tarefa in tarefas:
         try:
             tarefa()
         except Exception as e:

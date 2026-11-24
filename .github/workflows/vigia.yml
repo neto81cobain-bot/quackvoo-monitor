@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "4,19,34,49 * * * *"   # a cada 15 min: comandos do Telegram, promoções, checagem rápida
   workflow_dispatch:
+    inputs:
+      comando:
+        description: "Comando do Telegram (enviado pelo Worker da Cloudflare)"
+        required: false
+        default: ""
 
 permissions:
   contents: write   # salva as rotas mudadas por comando do Telegram
@@ -33,6 +38,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GITHUB_TOKEN: ${{ github.token }}
+          COMANDO: ${{ inputs.comando }}
         run: python vigia.py
       - name: Guardar o estado
         if: always()
