@@ -89,13 +89,9 @@ Cada aviso traz 🎯 Alvo (90% do preço atual), ✅ Comprei (liga a rede de seg
 /rotas                       suas rotas (com número)
 /agora                       busca completa agora
 /buscar MAO VVI 29/05 [05/06] preço de uma data (1 busca SerpAPI)
-/calendario 1 [06/2027]      dias baratos do mês em 🟩🟨🟥
-/grafico 1                   evolução do preço
 /promos                      últimas promoções achadas
 /alvo 1 1800                 muda o preço-alvo
 /pausar 1  ·  /ativar 1      liga/desliga a rota
-/nova MAO VVI 01/06/2027 30/06/2027 [noites]
-/apagar 1 sim
 /comprei 1 1172 29/05        rede de segurança de 24 h
 ```
 Com uma rota só, o número é opcional. O bot só obedece ao seu `TELEGRAM_CHAT_ID`.

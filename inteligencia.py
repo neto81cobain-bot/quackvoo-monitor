@@ -251,20 +251,6 @@ def texto_calor(cal: dict, mes: str | None = None, links: bool = False) -> str:
     return "\n".join(out)
 
 
-def url_grafico(h: dict, titulo: str) -> str | None:
-    """Gráfico da evolução como imagem (QuickChart) pra mandar no Telegram sem navegador."""
-    import json
-    from urllib.parse import quote
-    pts = [(e["t"], e["melhor"]) for e in h.get("execucoes", [])][-60:]
-    if len(pts) < 2:
-        return None
-    cfg = {"type": "line", "data": {"labels": [A.d(t).strftime("%d/%m") for t, _ in pts],
-           "datasets": [{"label": "menor preço (R$)", "data": [p for _, p in pts], "fill": True,
-                         "borderColor": "#16A34A", "backgroundColor": "rgba(22,163,74,0.15)", "pointRadius": 2}]},
-           "options": {"title": {"display": True, "text": titulo}, "legend": {"display": False}}}
-    return "https://quickchart.io/chart?bkg=white&w=600&h=320&c=" + quote(json.dumps(cfg, separators=(",", ":")))
-
-
 # ---------------------------------------------------------------- todos os sites pra conferir o mesmo voo
 AVISO_RJ = "⚠️ em recuperação judicial"
 

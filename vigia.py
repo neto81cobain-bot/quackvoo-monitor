@@ -24,7 +24,6 @@ import inteligencia as I
 import promos
 import radar
 import ofertas
-from aeroportos import nome as nome_aero
 
 AQUI = Path(__file__).parent
 HIST, VIGIA, ROTAS = AQUI / "dados" / "historico.json", AQUI / "dados" / "vigia.json", AQUI / "rotas.yaml"
@@ -36,7 +35,7 @@ BRT = timezone(timedelta(hours=-3))
 TUDO = "--tudo" in sys.argv
 AGORA = datetime.now(timezone.utc)
 HOJE = AGORA.astimezone(BRT).date()
-VERSAO_COMANDOS = 4
+VERSAO_COMANDOS = 5
 
 cfg = yaml.safe_load(ROTAS.read_text(encoding="utf-8")) or {}
 cfg.setdefault("rotas", []); cfg.setdefault("avisos", {})
@@ -329,20 +328,16 @@ AJUDA = """<b>Comandos do QuackVoo</b> 🦆
 /rotas — suas rotas (com número)
 /agora — busca completa agora
 /buscar MAO VVI 29/05 [05/06] — preço de uma data
-/calendario 1 [06/2027] — dias baratos 🟩🟨🟥
-/grafico 1 — evolução do preço
 /promos — últimas promoções achadas
 /alvo 1 1800 — muda o preço-alvo
 /pausar 1 [7] · /ativar 1 — pausa (por 7 dias) / reativa
 /radar — Radar do Norte: destinos baratos saindo daqui
-/nova MAO VVI 01/06/2027 30/06/2027 [noites] — cria rota
-/apagar 1 sim — apaga a rota
 /comprei 1 1172 29/05 — vigia 24 h pra ver se cai mais
-<i>Se tiver só uma rota, o número é opcional. Respondo em ~1 min (com o Worker da Cloudflare) ou até ~15 min sem ele.</i>"""
+<i>Criar, apagar ou editar rotas: no painel. Se tiver só uma rota, o número é opcional. Respondo em ~1 min (com o Worker da Cloudflare) ou até ~15 min sem ele.</i>"""
 COMANDOS_MENU = [("status", "Preços, recorde e créditos"), ("agora", "Busca completa agora"), ("buscar", "Preço de uma data: MAO VVI 29/05"),
-                 ("calendario", "Dias baratos do mês"), ("grafico", "Evolução do preço"), ("promos", "Últimas promoções"),
+                 ("promos", "Últimas promoções"),
                  ("rotas", "Suas rotas"), ("radar", "Destinos baratos saindo do Norte"), ("alvo", "Muda o preço-alvo"), ("pausar", "Pausa uma rota"), ("ativar", "Reativa uma rota"),
-                 ("nova", "Cria rota: MAO VVI 01/06/2027 30/06/2027"), ("comprei", "Vigia 24 h depois da compra"), ("ajuda", "Todos os comandos")]
+                 ("comprei", "Vigia 24 h depois da compra"), ("ajuda", "Todos os comandos")]
 
 
 def data_arg(s: str) -> str:
@@ -448,27 +443,6 @@ def cmd(texto: str) -> None:
             r["preco_alvo"] = round(preco_arg(resto[0]))
             salvar_rotas()
             enviar(f"🎯 Alvo da rota {i} agora é {A.reais(r['preco_alvo'])}. Te aviso quando chegar lá.")
-        elif c == "nova":
-            if len(args) < 4: raise ValueError("use: /nova MAO VVI 01/06/2027 30/06/2027 [noites]")
-            o, dst = args[0].upper(), args[1].upper()
-            ini, fim = data_arg(args[2]), data_arg(args[3])
-            if fim < ini: raise ValueError("a data final vem antes da inicial")
-            noites = int(args[4]) if len(args) > 4 else 0
-            nova = {"nome": f"{nome_aero(o)} -> {nome_aero(dst)} ({A.d(ini).strftime('%m/%y')})",
-                    "origem": o, "destino": dst, "ida_entre": [ini, fim], "noites": noites, "adultos": 1,
-                    "queda_minima": 5, "conexoes": [x for x in ["GRU", "BSB"] if x not in (o, dst)], "conexao_dias": [0, 1]}
-            if any(x["nome"] == nova["nome"] for x in cfg["rotas"]): nova["nome"] += f" #{len(cfg['rotas']) + 1}"
-            cfg["rotas"].append(nova)
-            salvar_rotas()
-            enviar(f"✅ Rota {len(cfg['rotas'])} criada: <b>{nova['nome']}</b> ({A.br(ini)} a {A.br(fim)}, {'só ida' if not noites else f'{noites} noites'}).\n"
-                   f"A primeira olhada vem na próxima busca completa (ou mande /agora). Ajuste alvo e escalas no painel ou com /alvo {len(cfg['rotas'])} 1500.")
-        elif c == "apagar":
-            i, r, resto = rota_arg(args)
-            if not resto or resto[0].lower() != "sim":
-                enviar(f"Tem certeza? Pra apagar <b>{r['nome']}</b> mande: /apagar {i} sim")
-            else:
-                cfg["rotas"].pop(i - 1); salvar_rotas()
-                enviar(f"🗑️ Apaguei a rota {i}: {r['nome']}.")
         elif c == "buscar":
             if len(args) < 3: raise ValueError("use: /buscar MAO VVI 29/05 [volta 05/06]")
             o, dst, ida = args[0].upper(), args[1].upper(), data_arg(args[2])
@@ -482,19 +456,6 @@ def cmd(texto: str) -> None:
             if g.get("faixa"): txt += f"\nGoogle: normal é {A.reais(g['faixa'][0])}–{A.reais(g['faixa'][1])}"
             if g.get("nivel"): txt += " · este está " + {"low": "🟢 BAIXO", "typical": "🟡 típico", "high": "🔴 ALTO"}.get(g["nivel"], g["nivel"])
             enviar(txt, [[("Abrir no Google Voos", v["url"])], [(t, u) for t, u in I.links_comparar(o, dst, ida, (A.d(volta) - A.d(ida)).days if volta else 0, 1)]])
-        elif c == "calendario":
-            i, r, resto = rota_arg(args)
-            mes = None
-            if resto:
-                m = re.fullmatch(r"(\d{1,2})/(\d{2,4})", resto[0])
-                if m: mes = f"{int(m.group(2)) + (2000 if len(m.group(2)) == 2 else 0)}-{int(m.group(1)):02d}"
-            cal = cal_atual(r)
-            enviar(f"📅 <b>{r['nome']}</b>\n\n" + I.texto_calor(cal, mes))
-        elif c == "grafico":
-            i, r, _ = rota_arg(args)
-            url = I.url_grafico(hist.get(r["nome"], {}), r["nome"])
-            if not url: enviar("Ainda não tenho buscas suficientes pra desenhar o gráfico."); return
-            avisos.foto_url(url, f"📈 <b>{r['nome']}</b>: menor preço a cada busca", silencioso=True)
         elif c == "radar":
             txt = radar.texto_resumo(est)
             enviar(txt or "🌴 O Radar do Norte ainda não rodou. A primeira varredura sai em até 4 h.")
