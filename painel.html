@@ -122,6 +122,8 @@ textarea{width:100%;min-height:220px;background:var(--s2);color:var(--tx);border
         <label class="toggle"><input type="checkbox" id="tg"> Telegram</label>
         <label class="toggle"><input type="checkbox" id="mail"> E-mail</label>
       </div>
+      <label class="toggle" style="margin-top:12px"><input type="checkbox" id="todas"> Mandar relatório em toda busca (mesmo sem queda)</label>
+      <p class="hint">Desmarcado, o bot só fala quando o preço cai, bate o alvo, faz recorde ou acha escala que compensa.</p>
       <p class="hint">Testar escalas é o que mais gasta crédito da Apify: por isso roda só num dia da semana.</p>
     </section>
 
@@ -236,7 +238,9 @@ let wfExtraviado = null;
 function verificarWorkflow(extraviado){
   wfExtraviado = extraviado;
   const falta = wfTexto && !wfTexto.texto.includes("playwright install");
+  const cheio = horaCheia();
   const partes = [];
+  if (cheio) partes.push("Os horários estão em hora cheia (ex.: 18:00): nesse minuto o GitHub fica lotado e às vezes pula a busca. Vou mudar pra 7 minutos depois (18:07).");
   if (falta) partes.push("O agendamento ainda não instala o navegador que desenha o relatório em imagem: sem isso, o Telegram recebe em texto.");
   if (extraviado) partes.push("Tem uma cópia do agendamento na pasta errada (workflows/ na raiz), que o GitHub ignora: ela será apagada.");
   $("atualizacao").hidden = !partes.length;
@@ -251,21 +255,28 @@ async function corrigirWorkflow(){
       const w = await gravarArq(WF, novo, wfTexto.sha, "Instala o navegador do relatório em imagem (QuackVoo Painel)");
       wfTexto = { sha:w.content.sha, texto:novo };
     }
+    if (horaCheia()){
+      const novo = workflowComHorarios(cronsDoWorkflow());
+      const w = await gravarArq(WF, novo, wfTexto.sha, "Tira as buscas da hora cheia (QuackVoo Painel)");
+      wfTexto = { sha:w.content.sha, texto:novo };
+      const hs = cronsDoWorkflow(); $("h1").value = hs[0]||""; $("h2").value = hs[1]||"";
+    }
     if (wfExtraviado){
       await gh("contents/workflows/quackvoo.yml", { method:"DELETE", body:JSON.stringify({ message:"Remove cópia do workflow na pasta errada", sha:wfExtraviado }) });
     }
-    verificarWorkflow(null); msg("Monitor ajustado! O próximo relatório chega em imagem. 🦆");
+    verificarWorkflow(null); msg("Monitor ajustado! 🦆");
   } catch(e){ msg(e.message + (/403/.test(e.message) ? " — o token precisa da permissão Workflows: Read and write." : ""),"err"); }
 }
 
 // ---------- horários (Brasília ↔ cron UTC) ----------
+function horaCheia(){ return !!wfTexto && /cron:\s*["']0\s+\d+\s/.test(wfTexto.texto); }
 function cronsDoWorkflow(){
   if (!wfTexto) return [];
   return [...wfTexto.texto.matchAll(/cron:\s*["'](\d+)\s+(\d+)\s+\*\s+\*\s+\*["']/g)]
     .map(m => { const h=(+m[2]-3+24)%24; return `${String(h).padStart(2,"0")}:${String(+m[1]).padStart(2,"0")}`; });
 }
 function workflowComHorarios(horas){
-  const linhas = horas.map(hm => { const [h,m]=hm.split(":").map(Number); return `    - cron: "${m} ${(h+3)%24} * * *"   # ${hm} (Brasília)`; });
+  const linhas = horas.map(hm => { let [h,m]=hm.split(":").map(Number); if (m===0) m=7; return `    - cron: "${m} ${(h+3)%24} * * *"   # ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")} (Brasília)`; });
   return wfTexto.texto.replace(/(  schedule:\n)((?:    - cron:.*\n)+)/, `$1${linhas.join("\n")}\n`);
 }
 
@@ -278,8 +289,9 @@ function preencherAvisos(){
   $("economia").value = av.economia_minima_conexao ?? 150;
   $("tg").checked = (av.telegram ?? av.whatsapp) !== false;
   $("mail").checked = !!av.email;
+  $("todas").checked = av.relatorio_toda_busca !== false;
   const hs = cronsDoWorkflow(); $("h1").value = hs[0]||""; $("h2").value = hs[1]||"";
-  ["resumo","conexoesToda","economia","tg","mail","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
+  ["resumo","conexoesToda","economia","tg","mail","todas","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
 }
 
 // ---------- rotas ----------
@@ -408,7 +420,7 @@ function custoMes(){
   return dias * 0.0002;
 }
 function montarYaml(){
-  const av = { ...cfg.avisos, economia_minima_conexao:+$("economia").value||0, resumo_semanal:$("resumo").value, conexoes_toda:$("conexoesToda").value, email:$("mail").checked, telegram:$("tg").checked };
+  const av = { ...cfg.avisos, economia_minima_conexao:+$("economia").value||0, resumo_semanal:$("resumo").value, conexoes_toda:$("conexoesToda").value, email:$("mail").checked, telegram:$("tg").checked, relatorio_toda_busca:$("todas").checked };
   delete av.whatsapp;
   const rotas = cfg.rotas.map(r => {
     const o = { nome:(r.nome||"").trim() || nomeAuto(r), origem:r.origem, destino:r.destino, ida_entre:r.ida_entre.map(String), noites:+r.noites||0, adultos:+r.adultos||1 };
