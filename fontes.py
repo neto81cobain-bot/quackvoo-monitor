@@ -19,8 +19,70 @@ def url_google(origem: str, destino: str, ida: str, volta: str | None = None) ->
     return "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=" + requests.utils.quote(q)
 
 
-def calendario(origem: str, destino: str, inicio: str, fim: str, adultos: int, noites: int | None, token: str) -> dict[str, dict]:
-    """Menor preço de cada dia entre inicio e fim. Retorna {AAAA-MM-DD: {preco, url}}."""
+def calendario_fli(origem: str, destino: str, inicio: str, fim: str, adultos: int, noites: int | None) -> dict[str, dict]:
+    """Mesmo calendário do Google Voos, de graça, pela biblioteca aberta Fli (API interna do Google).
+    Não oficial: pode quebrar se o Google mudar algo. Retorna {AAAA-MM-DD: {preco, url}}."""
+    try:
+        from fli.core.builders import build_date_search_segments
+        from fli.models import Airport, DateSearchFilters, PassengerInfo, SeatType, MaxStops
+        from fli.search import SearchDates
+    except ImportError as e:
+        raise ErroFonte(f"Fli não instalado ({e}).")
+    hoje = date.today() + timedelta(days=1)
+    ini = max(dia(inicio), hoje)
+    fim_d = min(dia(fim), date.today() + timedelta(days=300))
+    if ini > fim_d:
+        return {}
+    try:
+        o, d_ = getattr(Airport, origem), getattr(Airport, destino)
+    except AttributeError as e:
+        raise ErroFonte(f"Fli não conhece o aeroporto {e}.")
+    segs, tipo = build_date_search_segments(origin=o, destination=d_, start_date=ini.isoformat(),
+                                            trip_duration=noites or None, is_round_trip=bool(noites))
+    filtros = DateSearchFilters(trip_type=tipo, passenger_info=PassengerInfo(adults=adultos), flight_segments=segs,
+                                stops=MaxStops.ANY, seat_type=SeatType.ECONOMY, from_date=ini.isoformat(),
+                                to_date=fim_d.isoformat(), duration=noites or None)
+    ultimo = None
+    for tentativa in range(3):
+        try:
+            res = SearchDates().search(filtros, currency="BRL", language="pt-BR", country="BR") or []
+            break
+        except Exception as e:  # rede, limite de pedidos, resposta mudou
+            ultimo = e
+            time.sleep(8 * (tentativa + 1))
+    else:
+        raise ErroFonte(f"Fli falhou: {str(ultimo)[:160]}")
+    saida = {}
+    for item in res:
+        k = item.date[0].date().isoformat()
+        if not (ini.isoformat() <= k <= fim_d.isoformat()) or not item.price:
+            continue
+        volta = (dia(k) + timedelta(days=noites)).isoformat() if noites else None
+        if k not in saida or item.price < saida[k]["preco"]:
+            saida[k] = {"preco": round(item.price), "url": url_google(origem, destino, k, volta)}
+    return saida
+
+
+def calendario(origem: str, destino: str, inicio: str, fim: str, adultos: int, noites: int | None, token: str,
+               fonte: str = "auto") -> dict[str, dict]:
+    """Escolhe a fonte: 'apify', 'fli' ou 'auto' (Apify e, se faltar crédito/token ou falhar, Fli)."""
+    if fonte == "fli" or (fonte == "auto" and not token):
+        return calendario_fli(origem, destino, inicio, fim, adultos, noites)
+    try:
+        return calendario_apify(origem, destino, inicio, fim, adultos, noites, token)
+    except ErroFonte as e:
+        if fonte != "auto":
+            raise
+        print(f"Apify falhou ({e}); usando o Fli (grátis)")
+        FONTE_USADA.add("fli")
+        return calendario_fli(origem, destino, inicio, fim, adultos, noites)
+
+
+FONTE_USADA: set = set()
+
+
+def calendario_apify(origem: str, destino: str, inicio: str, fim: str, adultos: int, noites: int | None, token: str) -> dict[str, dict]:
+    """Menor preço de cada dia entre inicio e fim (Apify). Retorna {AAAA-MM-DD: {preco, url}}."""
     hoje = date.today() + timedelta(days=1)
     ini = max(dia(inicio), hoje)
     if ini > dia(fim):

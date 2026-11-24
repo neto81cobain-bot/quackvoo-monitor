@@ -1,0 +1,28 @@
+name: Teste das fontes de preço 🧪
+
+on:
+  workflow_dispatch:
+    inputs:
+      rota:
+        description: "origem destino inicio fim [noites]"
+        default: "MAO VVI 2027-05-25 2027-09-05"
+      apify:
+        description: "Comparar com a Apify (gasta ~US$ 0,02)"
+        type: boolean
+        default: true
+
+jobs:
+  comparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests PyYAML flights
+      - name: Comparar
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          ROTA: ${{ inputs.rota }}
+        run: python comparar_fontes.py $ROTA ${{ inputs.apify && ' ' || '--sem-apify' }}
