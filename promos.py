@@ -107,7 +107,7 @@ def _preco(texto: str) -> str | None:
 
 
 def combinar(posts: list[dict], rotas: list[dict], extras: list[str], origens: list[str] | None = None) -> list[dict]:
-    """Para cada post: por que interessa. ⭐ = fala do seu destino ou de sair do Norte."""
+    """Só posts que citam seus aeroportos do Norte (saindo ou chegando). ⭐ = cidade no título ou também o destino da rota."""
     achados = []
     extras = [sem_acento(x) for x in extras if str(x).strip()]
     norte = {nome_aero(o).split(" (")[0]: palavras(o) for o in (origens or [])}
@@ -118,24 +118,27 @@ def combinar(posts: list[dict], rotas: list[dict], extras: list[str], origens: l
             continue
         if p["fonte"] in NOTICIAS and not (re.search(VIAGEM_TITULO, titulo) and re.search(PRECO, titulo)):
             continue  # portal de notícia: só entra se o próprio título for de passagem/pacote com preço  # não é promoção de viagem (ex.: notícia de barco, de Uber, de pacote fiscal…)
+        # só interessa o que sai ou chega nos seus aeroportos do Norte (Manaus, Trombetas, Belém, Santarém…)
+        citadas = {cidade: ws for cidade, ws in norte.items() if any(_acha(w, t) for w in ws)}
+        if not citadas:
+            continue
         motivos, estrela = [], False
-        for r in rotas:
-            alvo = [w for w in palavras(r["destino"]) if _acha(w, t)]
-            if alvo:
-                no_titulo = any(_acha(w, titulo) for w in alvo)
-                motivos.append(f"{r['nome']}" + (" (no título)" if no_titulo else ""))
-                estrela = estrela or no_titulo or any(_acha(w, t) for w in palavras(r["origem"]))
-        for cidade, ws in norte.items():  # Radar do Norte: post que fala de sair de Manaus, Belém, Santarém…
+        for cidade, ws in citadas.items():
             if any(re.search(r"(saindo|partindo|saidas?|embarques?|origem|desde)\s+(de\s+|em\s+)?" + re.escape(w) + r"(?![a-z])", t)
-                   or re.search(r"\bde\s+" + re.escape(w) + r"\s+(para|a|ao|ate)\s", t) for w in ws):
-                motivos.append(f"🌴 saindo de {cidade}"); estrela = True
-        for w in NORTE_EXTRA:
-            if _acha(w, titulo):
-                motivos.append(f"🌴 cita {w.title()}"); estrela = True
+                   or re.search(r"\bde\s+" + re.escape(w) + r"\s+(para|a|ao|ate|e)\s", t) for w in ws):
+                motivos.append(f"🌴 saindo de {cidade}")
+            else:
+                motivos.append(f"🌴 de/para {cidade}")
+            estrela = estrela or any(_acha(w, titulo) for w in ws)
+        for r in rotas:
+            if any(_acha(w, t) for w in palavras(r["destino"])):
+                motivos.append(f"⭐ {r['nome']}"); estrela = True
         for w in extras:
             if _acha(w, t):
                 motivos.append(f"palavra “{w}”")
-        if re.search(CIA_PROMO, titulo) and not re.search(MILHAS, titulo):  # milhas/pontos não é passagem
+        if re.search(MILHAS, titulo) and not re.search(PRECO, titulo):
+            continue  # só milhas/pontos, sem preço em reais
+        if re.search(CIA_PROMO, titulo):
             motivos.append("✈️ promoção de companhia")
         if motivos:
             achados.append({**p, "rotas": motivos, "estrela": estrela, "pacote": bool(re.search(PACOTE, titulo)),
