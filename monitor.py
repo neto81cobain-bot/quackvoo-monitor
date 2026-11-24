@@ -26,6 +26,7 @@ HIST = AQUI / "dados" / "historico.json"
 VIGIA = AQUI / "dados" / "vigia.json"
 DIAS = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]
 DEMO, FORCAR = "--demo" in sys.argv, "--forcar" in sys.argv
+TESTE = "--teste" in sys.argv  # busca de verdade (com escalas), mas não avisa nem salva
 APIFY, SERP = os.getenv("APIFY_TOKEN", ""), os.getenv("SERPAPI_KEY", "")
 hoje = date.today()
 custo_dias = 0  # dias de calendário consultados (Apify cobra ~US$ 0,20 / 1000)
@@ -49,12 +50,16 @@ def cal_demo(o, d, ini, fim, adultos, noites):
     return out
 
 
-def cal(o, d, ini, fim, adultos, noites=None):
+def cal(o, d, ini, fim, adultos, noites=None, perna=False):
+    """perna=True: trecho de escala (busca grátis no Fli primeiro, Apify só se faltar)."""
     global custo_dias
-    custo_dias += (A.d(fim) - max(A.d(ini), hoje)).days + 1
     if DEMO:
+        custo_dias += (A.d(fim) - max(A.d(ini), hoje)).days + 1
         return cal_demo(o, d, ini, fim, adultos, noites)
-    return fontes.calendario(o, d, ini, fim, adultos, noites, APIFY)
+    fonte = "fli_primeiro" if perna else str(CFG_AV.get("fonte", "auto"))
+    r = fontes.calendario(o, d, ini, fim, adultos, noites, APIFY, fonte)
+    custo_dias = fontes.DIAS_APIFY
+    return r
 
 
 # ---------------------------------------------------------------- análise de uma rota
@@ -77,19 +82,19 @@ def analisar(r: dict, testar_conexoes: bool) -> dict:
         fim1 = A.mais(fim, max(dias_con))
         sugestoes = []
         if n:  # ida e volta: monta ida e volta separadas (direto só ida ou via conexão)
-            ida_dir = cal(o, dst, ini, fim, ad)
-            volta_dir = cal(dst, o, A.mais(ini, n), A.mais(fim, n), ad)
+            ida_dir = cal(o, dst, ini, fim, ad, perna=True)
+            volta_dir = cal(dst, o, A.mais(ini, n), A.mais(fim, n), ad, perna=True)
         for hub in r["conexoes"]:
             if hub in (o, dst):
                 continue
             try:
-                ida = A.combinar_conexao(cal(o, hub, ini, fim, ad), cal(hub, dst, ini, fim1, ad), dias_con)
+                ida = A.combinar_conexao(cal(o, hub, ini, fim, ad, perna=True), cal(hub, dst, ini, fim1, ad, perna=True), dias_con)
                 if not n:
                     for k, v in ida.items():
                         sugestoes.append({"hub": hub, "dia": k, "total": v["total"], "ida": v, "volta": None})
                     continue
-                volta = A.combinar_conexao(cal(dst, hub, A.mais(ini, n), A.mais(fim, n), ad),
-                                           cal(hub, o, A.mais(ini, n), A.mais(fim1, n), ad), dias_con)
+                volta = A.combinar_conexao(cal(dst, hub, A.mais(ini, n), A.mais(fim, n), ad, perna=True),
+                                           cal(hub, o, A.mais(ini, n), A.mais(fim1, n), ad, perna=True), dias_con)
                 for k in direto:
                     kv = A.mais(k, n)
                     # cada perna escolhe o mais barato: direto só ida ou via conexão
@@ -407,7 +412,7 @@ def main():
                 print(f"↺  {r['nome']}: rota mudou ({h['assinatura']} → {assinatura}), recomeçando o histórico")
             h.clear(); h.update({"execucoes": [], "assinatura": assinatura})
         ja_testou_hoje = (h.get("conexao") or {}).get("testado_em") == hoje.isoformat()
-        testar = (FORCAR or DEMO or (dia_conexoes and not ja_testou_hoje) or not h.get("conexao")) and not economia
+        testar = (FORCAR or DEMO or TESTE or (dia_conexoes and not ja_testou_hoje) or not h.get("conexao")) and not economia
         try:
             res = analisar(r, testar)
         except fontes.ErroFonte as e:
@@ -448,10 +453,11 @@ def main():
         if motivos:
             avisar.append((res, motivos))
 
-    print(f"Custo estimado desta execução: ~{custo_dias} dias de calendário ≈ US$ {custo_dias * 0.0002:.3f} (grátis até US$ 5/mês)")
+    print(f"Custo estimado desta execução: ~{custo_dias} dias de calendário na Apify ≈ US$ {custo_dias * 0.0002:.3f} (grátis até US$ 5/mês)"
+          + (" · Fli (grátis) usado nas escalas" if "fli" in fontes.FONTE_USADA else ""))
     HIST.parent.mkdir(exist_ok=True)
     hist["_meta"] = {"ultima": datetime.now(timezone.utc).isoformat(timespec="seconds"), "custo_dias": custo_dias, "erros": erros_meta}
-    if not DEMO:
+    if not DEMO and not TESTE:
         HIST.write_text(json.dumps(hist, ensure_ascii=False, indent=1))
 
     if not avisar:
@@ -461,6 +467,8 @@ def main():
     assunto, html, texto = montar(avisar)
     (AQUI / "dados" / "relatorio.html").write_text(html, encoding="utf-8")
     print("\n" + assunto + "\n" + texto)
+    if TESTE:
+        print("\n(teste: nada enviado nem salvo)"); return
     if DEMO and "--enviar" not in sys.argv:
         print("\n(demo: nada enviado; veja dados/relatorio.html)"); return
     if CFG_AV.get("email", True):

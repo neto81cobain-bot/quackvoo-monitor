@@ -133,7 +133,7 @@ textarea{width:100%;min-height:220px;background:var(--s2);color:var(--tx);border
         <label>A cada
           <select id="rapidaHoras"><option value="1">1 hora</option><option value="2">2 horas</option><option value="3">3 horas</option><option value="4">4 horas</option><option value="6">6 horas</option></select></label>
       </div>
-      <p class="hint">Olha só os ~8 dias mais baratos de cada rota: pega queda em poucas horas gastando pouco. Pausa sozinha se a Apify passar de 85% do grátis.</p>
+      <p class="hint">Olha só os ~8 dias mais baratos de cada rota: pega queda em poucas horas gastando pouco. Se a Apify passar de 85% do grátis, troca sozinha pra fonte grátis (Fli).</p>
       <label class="toggle" style="margin-top:12px"><input type="checkbox" id="promos"> 🏷️ Promoções dos blogs (Melhores Destinos, Passagens Imperdíveis…)</label>
       <label style="margin-top:8px">Avisar também se o post falar de (separe por vírgula)<input id="palavras" placeholder="ex.: Mega Promo Latam, Azul, feirão" autocomplete="off"></label>
       <p class="hint">Grátis. Avisa quando um post fala do destino de alguma rota ativa (⭐ se também cita a origem).</p>
@@ -433,7 +433,7 @@ function custoMes(){
     const [ini, fim] = r.ida_entre; if (!ini||!fim||fim<hoje) continue;
     const n = diasEntre(ini<hoje?hoje:ini, fim)+1, iv = +r.noites>0, hubs = r.conexoes.length;
     dias += n * execDia * 30;
-    if (hubs) dias += n * 4.3 * (iv ? 2 + hubs*4 : hubs*2);  // escalas: 1x por semana
+    if (hubs) dias += 0.2 * n * 4.3 * (iv ? 2 + hubs*4 : hubs*2);  // escalas: 1x por semana, quase tudo pelo Fli (grátis)
     if ($("rapida").checked) dias += 12 * (24 / (+$("rapidaHoras").value || 2)) * 30;  // ~8–12 dias por checagem
   }
   return dias * 0.0002;

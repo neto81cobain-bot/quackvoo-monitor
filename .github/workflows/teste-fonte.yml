@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       rota:
-        description: "origem destino inicio fim [noites]"
+        description: "origem destino inicio fim [noites]  — ou 'monitor' pra rodar o monitor completo sem avisar"
         default: "MAO VVI 2027-05-25 2027-09-05"
       apify:
         description: "Comparar com a Apify (gasta ~US$ 0,02)"
@@ -25,5 +25,6 @@ jobs:
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           ROTA: ${{ inputs.rota }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: |
-          python comparar_fontes.py $ROTA ${{ inputs.apify && ' ' || '--sem-apify' }}
+          if [ "$ROTA" = "monitor" ]; then python monitor.py --teste; else python comparar_fontes.py $ROTA ${{ inputs.apify && ' ' || '--sem-apify' }}; fi

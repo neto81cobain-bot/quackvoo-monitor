@@ -140,19 +140,18 @@ def checagem_rapida():
     if not TUDO and minutos_desde("rapida_t") < intervalo:
         return
     uso = est.get("apify")
-    if uso and uso.get("pct", 0) >= 0.85:
-        print("checagem rápida pausada: crédito da Apify acima de 85%"); return
+    fonte = "fli" if uso and uso.get("pct", 0) >= 0.85 else "auto"  # crédito no fim: só a fonte grátis
     est["rapida_t"] = iso(AGORA)
     for _, r in ativas():
         h = hist.get(r["nome"], {})
         cal = cal_atual(r)
-        if not cal or not APIFY:
+        if not cal:
             continue
         top = sorted(cal, key=lambda k: cal[k]["preco"])[:8]
         novos = {}
         try:
             for ini, fim in agrupar(top):
-                novos.update(fontes.calendario(r["origem"], r["destino"], ini, fim, r.get("adultos", 1), int(r.get("noites") or 0) or None, APIFY))
+                novos.update(fontes.calendario(r["origem"], r["destino"], ini, fim, r.get("adultos", 1), int(r.get("noites") or 0) or None, APIFY, fonte))
         except fontes.ErroFonte as e:
             print("rápida:", r["nome"], e); continue
         if not novos:
@@ -307,7 +306,8 @@ def saude():
             if nivel and est.get("aviso_apify") != chave:
                 est["aviso_apify"] = chave
                 enviar(f"💳 Apify: já usou US$ {uso['usado']:.2f} de US$ {uso['limite']:.2f} grátis deste mês ({uso['pct']:.0%}). "
-                       + ("A checagem rápida fica pausada até o mês virar." if uso["pct"] >= 0.85 else "Se passar de 85%, pauso a checagem rápida sozinho."), forte=True)
+                       + ("A checagem rápida passa a usar só a fonte grátis (Fli) até o mês virar; em rotas que o Fli não cobre, ela fica parada." if uso["pct"] >= 0.85
+                          else "Se passar de 85%, a checagem rápida troca sozinha pra fonte grátis (Fli)."), forte=True)
         sr = fontes.serp_restante(SERP)
         if sr is not None:
             est["serp_restante"] = sr

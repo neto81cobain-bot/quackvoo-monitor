@@ -72,6 +72,17 @@ def calendario(origem: str, destino: str, inicio: str, fim: str, adultos: int, n
     """Escolhe a fonte: 'apify', 'fli' ou 'auto' (Apify e, se faltar crédito/token ou falhar, Fli)."""
     if fonte == "fli" or (fonte == "auto" and not token):
         return calendario_fli(origem, destino, inicio, fim, adultos, noites)
+    if fonte == "fli_primeiro":  # pernas das escalas: grátis primeiro; Apify só se o Fli cobrir pouco
+        try:
+            r = calendario_fli(origem, destino, inicio, fim, adultos, noites)
+        except ErroFonte as e:
+            print(f"Fli {origem}→{destino}: {e}"); r = {}
+        hoje = date.today() + timedelta(days=1)
+        esperados = (dia(fim) - max(dia(inicio), hoje)).days + 1
+        if esperados <= 0 or len(r) >= 0.8 * esperados or not token:
+            FONTE_USADA.add("fli")
+            return r
+        print(f"Fli cobriu só {len(r)}/{esperados} dias de {origem}→{destino}; completando com a Apify")
     try:
         return calendario_apify(origem, destino, inicio, fim, adultos, noites, token)
     except ErroFonte as e:
@@ -83,6 +94,7 @@ def calendario(origem: str, destino: str, inicio: str, fim: str, adultos: int, n
 
 
 FONTE_USADA: set = set()
+DIAS_APIFY = 0  # dias de calendário cobrados pela Apify nesta execução
 
 
 def calendario_apify(origem: str, destino: str, inicio: str, fim: str, adultos: int, noites: int | None, token: str) -> dict[str, dict]:
@@ -100,6 +112,8 @@ def calendario_apify(origem: str, destino: str, inicio: str, fim: str, adultos: 
     }
     if noites:
         entrada["returnDate"] = (ini + timedelta(days=noites)).isoformat()
+    global DIAS_APIFY
+    DIAS_APIFY += min(dias, 365)
     url = f"https://api.apify.com/v2/acts/{ATOR}/run-sync-get-dataset-items?token={token}&timeout=240"
     for tentativa in range(3):
         try:

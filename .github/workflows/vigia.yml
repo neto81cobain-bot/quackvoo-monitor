@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install requests PyYAML
+      - run: pip install requests PyYAML "flights @ git+https://github.com/punitarani/fli.git"
       - name: Lembrar do estado anterior
         uses: actions/cache/restore@v4
         with:
