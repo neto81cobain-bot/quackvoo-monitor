@@ -2,7 +2,11 @@ import requests, json
 from datetime import date, timedelta
 import barcos
 B, UA = "https://navegam-fluvial-api-prod-979984919366.us-central1.run.app", barcos.UA
-c = requests.get(B + "/ecommerce/popular-destinations", params={"page": 1, "page_size": 100}, headers=UA, timeout=40).json()["result"]["data"]
+c = []
+for pg in (1, 2):
+    j = requests.get(B + "/ecommerce/popular-destinations", params={"page": pg, "page_size": 50}, headers=UA, timeout=40).json()
+    print("NAVRAW", str(j)[:200]) if "result" not in j else None
+    c += (j.get("result") or {}).get("data", [])
 print("NAVCID:", [(x["id"], x["name"], x["state"]) for x in c])
 ids = {x["name"]: x["id"] for x in c}
 alvo = [n for n in ids if any(k in n for k in ("Terra Santa", "Faro", "Nhamund", "Oriximin", "Santar", "Juruti", "Óbidos", "Parintins"))]
