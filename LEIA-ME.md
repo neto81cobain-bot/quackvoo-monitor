@@ -80,29 +80,39 @@ escalas (ex.: GRU → Santa Cruz). A 1ª rodada só aprende. Tudo entra no resum
 
 ### 🚤 Barco e lancha
 Saídas, horários e preços de duas plataformas de venda online: **Yjara Viagens** (Pará e Baixo Amazonas) e
-**Navegam** (Amazonas, inclusive Terra Santa, Faro e Nhamundá). Viagem com escala aparece: cada pedaço é vendido como
-trecho, e o `/barco` mostra por onde a embarcação passa antes ("passa por Juruti, Óbidos").
-`/barco Oriximiná Santarém [12/12]` mostra os próximos dias; `/vigiarbarco Oriximiná Santarém` vigia a cada 3 h e
-avisa saída nova à venda e queda de preço (`/barcos`, `/pararbarco 1`). Lancha que só vende no porto ou nas redes
-não aparece. Em 24/11/2026, Terra Santa e Faro estavam cadastradas, mas sem nenhuma viagem à venda online.
+**Navegam** (Amazonas, inclusive Terra Santa, Faro e Nhamundá). Cada pedaço de uma viagem com escala é vendido
+como trecho próprio: dá pra comprar só Oriximiná → Santarém num barco que vem de Manaus, e a busca mostra onde a
+embarcação para antes ("para antes em Juruti, Óbidos"). A busca roda direto no Worker da Cloudflare: resposta em segundos.
+Barcos da Navegam com venda pelo WhatsApp trazem o link; no fim de cada busca vão os WhatsApps da Yjara e da Navegam.
+
+**📒 Agenda de lanchas**: lancha pequena que só vende pelo WhatsApp/Instagram. Cadastre no painel ou no bot
+(`Lancha Fulano, 93 99999-9999, Oriximiná, Santarém`); o contato aparece em "Também pergunte" quando você busca
+aquele trecho (nos dois sentidos). Sem "para", aparece em qualquer trecho daquela cidade.
+
+### 🏠 Menu com botões (/menu)
+O bot tem menu: ✈️ Passagem de avião · 🚤 Barco e lancha · 🌴 Promoções · 🔔 O que estou vigiando · ⚙️ Ajustes.
+Navegar e buscar barco é instantâneo (o Worker responde sozinho). O que depende dos seus dados de voo (preços agora,
+buscar tudo, mudar alvo, pausar) acorda o vigia no GitHub e chega em ~1 min. Também dá pra só escrever um trecho:
+`Oriximiná Santarém`, `Santarém para Óbidos 12/12`.
+
+Como funciona por dentro: o vigia manda pro Worker (provando com OIDC que é este repositório) o token do bot e um
+resumo das rotas, trechos e agenda; o Worker guarda num cofre KV (`quackvoo-qv`) e só obedece ao seu chat.
 
 ### Botões nos avisos
 Cada aviso traz 🎯 Alvo (90% do preço atual), ✅ Comprei (liga a rede de segurança de 24 h), ⏸️ Pausar 7 dias e
-📊 Status. Funcionam via o Worker da Cloudflare (`cloudflare/worker.js`).
+📊 Status.
 
-### Comandos do Telegram (respondo em até ~15 min)
+### Comandos digitados (continuam valendo)
 
 ```
-/status                      preços, recorde e créditos
-/rotas                       suas rotas (com número)
-/agora                       busca completa agora
+/menu                        menu com botões
+/status · /rotas · /agora · /promos · /radar
 /buscar MAO VVI 29/05 [05/06] preço de uma data (1 busca SerpAPI)
-/promos                      últimas promoções achadas
-/alvo 1 1800                 muda o preço-alvo
-/pausar 1  ·  /ativar 1      liga/desliga a rota
+/alvo 1 1800 · /pausar 1 [7] · /ativar 1
 /comprei 1 1172 29/05        rede de segurança de 24 h
-/barco Oriximiná Santarém    saídas de barco/lancha (7 dias)
+/barco Oriximiná Santarém    saídas de barco/lancha (na hora)
 /vigiarbarco Oriximiná Santarém · /barcos · /pararbarco 1
+/agenda · /agenda apagar 1   contatos de lanchas
 ```
 Com uma rota só, o número é opcional. O bot só obedece ao seu `TELEGRAM_CHAT_ID`.
 
