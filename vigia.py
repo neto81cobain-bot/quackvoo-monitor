@@ -218,13 +218,17 @@ def vigiar_promos():
     if primeira_vez:  # não despeja o arquivo todo: só o que saiu nas últimas 12 h
         novos = [p for p in novos if p["quando"] and AGORA - p["quando"] < timedelta(hours=12)]
     recentes = est.setdefault("promos_recentes", [])
-    for p in sorted(novos, key=lambda x: not x["estrela"])[:5]:
-        recentes.insert(0, {"titulo": p["titulo"], "link": p["link"], "fonte": p["fonte"], "quando": iso(p["quando"] or AGORA)})
-        texto = (f"🏷️ <b>Promoção no {p['fonte']}</b>{' ⭐' if p['estrela'] else ''}\n<b>{p['titulo']}</b>\n"
-                 f"Interessa: {', '.join(p['rotas'])}" + (f"\nPreço citado: {p['preco']}" if p.get("preco") else "")
-                 + "\n<i>Promoção de blog costuma durar poucas horas: confira as datas lá.</i>")
-        enviar(texto, [[("Abrir a promoção", p["link"])]], forte=p["estrela"])
-    est["promos_recentes"] = recentes[:15]
+    novos = sorted(novos, key=lambda x: not x["estrela"])
+    novos = [x for x in novos if x["estrela"]][:5] + [x for x in novos if not x["estrela"]][:2]  # o resto fica no /promos
+    for p in novos:
+        recentes.insert(0, {"titulo": p["titulo"], "link": p["link"], "fonte": p["fonte"], "quando": iso(p["quando"] or AGORA), "pacote": p.get("pacote")})
+        tipo = "📦 Pacote" if p.get("pacote") else "🏷️ Promoção"
+        titulo = p["titulo"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        texto = (f"{tipo} · <i>{p['fonte']}</i>{' ⭐' if p['estrela'] else ''}\n<b>{titulo}</b>\n"
+                 + (f"💰 {p['preco']}\n" if p.get("preco") else "")
+                 + f"<i>{' · '.join(p['rotas'])}</i>\n<i>Promoção postada costuma durar poucas horas: confira as datas lá.</i>")
+        enviar(texto, [[("Abrir a postagem", p["link"])]], forte=p["estrela"])
+    est["promos_recentes"] = recentes[:20]
 
 
 # ---------------------------------------------------------------- 3. rede de segurança pós-compra
