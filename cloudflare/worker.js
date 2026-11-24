@@ -301,7 +301,8 @@ async function acordarVigia(env, inputs) {
 const pedirVigia = (env, chat, texto) => acordarVigia(env, { comando: JSON.stringify({ chat, texto }) });
 
 async function barco(env, cfg, chat, msgId, o, d, ini) {
-  await mostrar(env, cfg, chat, msgId, `🔎 Procurando <b>${nome(o)} → ${nome(d)}</b> a partir de ${diaBR(ini)}…`);
+  const r0 = await mostrar(env, cfg, chat, msgId, `🔎 Procurando <b>${nome(o)} → ${nome(d)}</b> a partir de ${diaBR(ini)}…`);
+  msgId = msgId || r0?.result?.message_id;
   let saidas = {};
   let erro = "";
   try { saidas = await buscarBarcos(env, o, d, ini, DIAS); } catch (e) { erro = e.message; }
