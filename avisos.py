@@ -149,13 +149,21 @@ def tg(metodo: str, dados: dict | None = None, timeout: int = 30) -> dict:
 def teclado(botoes: list[list[tuple[str, str]]] | None) -> dict | None:
     if not botoes:
         return None
-    return {"inline_keyboard": [[{"text": t, "url": u} for t, u in linha] for linha in botoes if linha]}
+    # "/comando" vira botão de ação (callback); o resto é link
+    return {"inline_keyboard": [[({"text": t, "callback_data": u[:64]} if u.startswith("/") else {"text": t, "url": u}) for t, u in linha]
+                                 for linha in botoes if linha]}
+
+
+def tamanho_visivel(html_txt: str) -> int:
+    import html, re
+    return len(html.unescape(re.sub(r"<[^>]+>", "", html_txt)).encode("utf-16-le")) // 2
 
 
 def mensagem(texto: str, botoes=None, silencioso: bool = False, chat_id: str | None = None) -> dict:
     """Mensagem HTML com botões de link. Textos longos são divididos (botões vão na última parte)."""
     chat = chat_id or os.getenv("TELEGRAM_CHAT_ID", "").strip()
-    partes = _dividir_mensagem(texto)
+    # o limite do Telegram (4096) conta o texto visível, sem as tags e os endereços dos links
+    partes = [texto] if tamanho_visivel(texto) <= MAX_TELEGRAM_CHARS else _dividir_mensagem(texto)
     r = {}
     for i, parte in enumerate(partes):
         r = tg("sendMessage", {"chat_id": chat, "text": parte, "parse_mode": "HTML", "disable_web_page_preview": "true",

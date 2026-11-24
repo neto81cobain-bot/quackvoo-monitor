@@ -8,7 +8,7 @@ from email.utils import parsedate_to_datetime
 
 import requests
 
-from aeroportos import palavras, sem_acento
+from aeroportos import nome as nome_aero, palavras, sem_acento
 
 FEEDS = {
     "Melhores Destinos": "https://www.melhoresdestinos.com.br/feed",
@@ -56,7 +56,7 @@ def _preco(texto: str) -> str | None:
     return f"R$ {m.group(1)}" if m else None
 
 
-def combinar(posts: list[dict], rotas: list[dict], extras: list[str]) -> list[dict]:
+def combinar(posts: list[dict], rotas: list[dict], extras: list[str], origens: list[str] | None = None) -> list[dict]:
     """Para cada post: quais rotas ele interessa. Destino no texto = relevante; origem também = ⭐."""
     achados = []
     extras = [sem_acento(x) for x in extras if str(x).strip()]
@@ -74,16 +74,21 @@ def combinar(posts: list[dict], rotas: list[dict], extras: list[str]) -> list[di
         for w in extras:
             if _acha(w, t):
                 motivos.append(f"palavra “{w}”")
+        for o in origens or []:  # Radar do Norte: post que cita sair de Manaus, Belém, Santarém…
+            ws = palavras(o)
+            if any(re.search(r"(saindo|partindo|sa[ií]das?|de|desde)\s+(de\s+)?" + re.escape(w) + r"(?![a-z])", t) for w in ws):
+                motivos.append(f"🌴 saindo de {nome_aero(o).split(' (')[0]}")
+                estrela = True
         if motivos:
             achados.append({**p, "rotas": motivos, "estrela": estrela, "preco": _preco(p["titulo"]) or _preco(p["texto"])})
     return achados
 
 
-def buscar(rotas: list[dict], extras: list[str], feeds: dict | None = None) -> tuple[list[dict], list[str]]:
+def buscar(rotas: list[dict], extras: list[str], feeds: dict | None = None, origens: list[str] | None = None) -> tuple[list[dict], list[str]]:
     posts, erros = [], []
     for nome, url in (feeds or FEEDS).items():
         try:
             posts += ler_feed(nome, url)
         except Exception as e:
             erros.append(f"{nome}: {str(e)[:80]}")
-    return combinar(posts, rotas, extras), erros
+    return combinar(posts, rotas, extras, origens), erros

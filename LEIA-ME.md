@@ -67,6 +67,15 @@ no período e links pra comparar no Skyscanner e no Kayak.
 Som: só promoção forte, recorde, alvo e queda pós-compra tocam. O resto chega em silêncio; entre 22h e
 7h tudo é silencioso, menos 🔥 e 🛟.
 
+### 🌴 Radar do Norte
+A cada 4 h (grátis, pelo Fli) olha pra onde está barato voar saindo de Manaus, Belém, Santarém e Trombetas
+(mude em `radar_origens`). Guarda o preço de cada destino e avisa na hora quando um cair 25%+ abaixo do normal;
+domingo manda o resumo. Posts dos blogs que citam "saindo de Belém/Manaus…" também avisam.
+
+### Botões nos avisos
+Cada aviso traz 🎯 Alvo (90% do preço atual), ✅ Comprei (liga a rede de segurança de 24 h), ⏸️ Pausar 7 dias e
+📊 Status. Funcionam via o Worker da Cloudflare (`cloudflare/worker.js`).
+
 ### Comandos do Telegram (respondo em até ~15 min)
 
 ```

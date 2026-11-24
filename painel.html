@@ -137,6 +137,9 @@ textarea{width:100%;min-height:220px;background:var(--s2);color:var(--tx);border
       <label class="toggle" style="margin-top:12px"><input type="checkbox" id="promos"> 🏷️ Promoções dos blogs (Melhores Destinos, Passagens Imperdíveis…)</label>
       <label style="margin-top:8px">Avisar também se o post falar de (separe por vírgula)<input id="palavras" placeholder="ex.: Mega Promo Latam, Azul, feirão" autocomplete="off"></label>
       <p class="hint">Grátis. Avisa quando um post fala do destino de alguma rota ativa (⭐ se também cita a origem).</p>
+      <label class="toggle" style="margin-top:12px"><input type="checkbox" id="radar"> 🌴 Radar do Norte: destinos baratos saindo daqui</label>
+      <label style="margin-top:8px">Aeroportos de saída (separe por vírgula)<input id="radarOrigens" placeholder="MAO, BEL, STM, TMT" autocomplete="off"></label>
+      <p class="hint">Grátis. A cada 4 h olha pra onde está barato voar saindo desses aeroportos, aprende o preço normal de cada destino e avisa na hora quando um cair 25%+. Domingo chega o resumo da semana.</p>
       <p class="hint">Entre 22h e 7h as mensagens chegam sem som, menos promoção forte 🔥 e queda depois da compra 🛟.</p>
       <p class="hint">Testar escalas é o que mais gasta crédito da Apify: por isso roda só num dia da semana.</p>
     </section>
@@ -307,9 +310,11 @@ function preencherAvisos(){
   $("rapida").checked = av.checagem_rapida !== false;
   $("rapidaHoras").value = String(av.rapida_horas ?? 2);
   $("promos").checked = av.promos !== false;
+  $("radar").checked = av.radar !== false;
+  $("radarOrigens").value = (av.radar_origens || ["MAO","BEL","STM","TMT"]).join(", ");
   $("palavras").value = Array.isArray(av.palavras_promo) ? av.palavras_promo.join(", ") : (av.palavras_promo || "");
   const hs = cronsDoWorkflow(); $("h1").value = hs[0]||""; $("h2").value = hs[1]||"";
-  ["resumo","conexoesToda","economia","tg","mail","todas","rapida","rapidaHoras","promos","palavras","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
+  ["resumo","conexoesToda","economia","tg","mail","todas","rapida","rapidaHoras","promos","palavras","radar","radarOrigens","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
 }
 
 // ---------- rotas ----------
@@ -441,7 +446,8 @@ function custoMes(){
 function montarYaml(){
   const av = { ...cfg.avisos, economia_minima_conexao:+$("economia").value||0, resumo_semanal:$("resumo").value, conexoes_toda:$("conexoesToda").value, email:$("mail").checked, telegram:$("tg").checked, relatorio_toda_busca:$("todas").checked,
     checagem_rapida:$("rapida").checked, rapida_horas:+$("rapidaHoras").value, promos:$("promos").checked,
-    palavras_promo:$("palavras").value.split(",").map(x=>x.trim()).filter(Boolean) };
+    palavras_promo:$("palavras").value.split(",").map(x=>x.trim()).filter(Boolean),
+    radar:$("radar").checked, radar_origens:$("radarOrigens").value.toUpperCase().split(/[,\s]+/).filter(x=>/^[A-Z]{3}$/.test(x)) };
   if (!av.palavras_promo.length) delete av.palavras_promo;
   delete av.whatsapp;
   const rotas = cfg.rotas.map(r => {

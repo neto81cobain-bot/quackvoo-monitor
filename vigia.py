@@ -22,6 +22,7 @@ import avisos
 import fontes
 import inteligencia as I
 import promos
+import radar
 from aeroportos import nome as nome_aero
 
 AQUI = Path(__file__).parent
@@ -34,7 +35,7 @@ BRT = timezone(timedelta(hours=-3))
 TUDO = "--tudo" in sys.argv
 AGORA = datetime.now(timezone.utc)
 HOJE = AGORA.astimezone(BRT).date()
-VERSAO_COMANDOS = 3
+VERSAO_COMANDOS = 4
 
 cfg = yaml.safe_load(ROTAS.read_text(encoding="utf-8")) or {}
 cfg.setdefault("rotas", []); cfg.setdefault("avisos", {})
@@ -198,7 +199,8 @@ def vigiar_promos():
     est["promos_t"] = iso(AGORA)
     extras = AV.get("palavras_promo") or []
     if isinstance(extras, str): extras = [x.strip() for x in extras.split(",")]
-    achados, erros = promos.buscar([r for _, r in ativas()], extras)
+    origens = [] if AV.get("radar") is False else (AV.get("radar_origens") or radar.ORIGENS_PADRAO)
+    achados, erros = promos.buscar([r for _, r in ativas()], extras, origens=origens)
     for e in erros: print("promo:", e)
     vistos = est.setdefault("promos_vistos", [])
     primeira_vez = not vistos and not est.get("promos_iniciado")
@@ -326,14 +328,15 @@ AJUDA = """<b>Comandos do QuackVoo</b> 🦆
 /grafico 1 — evolução do preço
 /promos — últimas promoções achadas
 /alvo 1 1800 — muda o preço-alvo
-/pausar 1 · /ativar 1 — liga/desliga a rota
+/pausar 1 [7] · /ativar 1 — pausa (por 7 dias) / reativa
+/radar — Radar do Norte: destinos baratos saindo daqui
 /nova MAO VVI 01/06/2027 30/06/2027 [noites] — cria rota
 /apagar 1 sim — apaga a rota
 /comprei 1 1172 29/05 — vigia 24 h pra ver se cai mais
 <i>Se tiver só uma rota, o número é opcional. Respondo em ~1 min (com o Worker da Cloudflare) ou até ~15 min sem ele.</i>"""
 COMANDOS_MENU = [("status", "Preços, recorde e créditos"), ("agora", "Busca completa agora"), ("buscar", "Preço de uma data: MAO VVI 29/05"),
                  ("calendario", "Dias baratos do mês"), ("grafico", "Evolução do preço"), ("promos", "Últimas promoções"),
-                 ("rotas", "Suas rotas"), ("alvo", "Muda o preço-alvo"), ("pausar", "Pausa uma rota"), ("ativar", "Reativa uma rota"),
+                 ("rotas", "Suas rotas"), ("radar", "Destinos baratos saindo do Norte"), ("alvo", "Muda o preço-alvo"), ("pausar", "Pausa uma rota"), ("ativar", "Reativa uma rota"),
                  ("nova", "Cria rota: MAO VVI 01/06/2027 30/06/2027"), ("comprei", "Vigia 24 h depois da compra"), ("ajuda", "Todos os comandos")]
 
 
@@ -423,10 +426,17 @@ def cmd(texto: str) -> None:
                 disparar_busca(True)
                 enviar("🔎 Buscando agora! O relatório completo chega em ~3–5 min.")
         elif c in ("pausar", "ativar"):
-            i, r, _ = rota_arg(args)
-            r["ativa"] = c == "ativar"
-            salvar_rotas()
-            enviar(f"{'▶️ Reativei' if c == 'ativar' else '⏸️ Pausei'} a rota {i}: {r['nome']}.")
+            i, r, resto = rota_arg(args)
+            r.pop("pausada_ate", None)
+            if c == "pausar" and resto and resto[0].isdigit():
+                ate = HOJE + timedelta(days=int(resto[0]))
+                r["pausada_ate"] = ate.isoformat()
+                salvar_rotas()
+                enviar(f"⏸️ Pausei a rota {i} ({r['nome']}) até {ate:%d/%m}. Ela volta sozinha. Pra voltar antes: /ativar {i}")
+            else:
+                r["ativa"] = c == "ativar"
+                salvar_rotas()
+                enviar(f"{'▶️ Reativei' if c == 'ativar' else '⏸️ Pausei'} a rota {i}: {r['nome']}.")
         elif c == "alvo":
             i, r, resto = rota_arg(args)
             if not resto: raise ValueError("diga o valor: /alvo 1 1800")
@@ -480,6 +490,9 @@ def cmd(texto: str) -> None:
             url = I.url_grafico(hist.get(r["nome"], {}), r["nome"])
             if not url: enviar("Ainda não tenho buscas suficientes pra desenhar o gráfico."); return
             avisos.foto_url(url, f"📈 <b>{r['nome']}</b>: menor preço a cada busca", silencioso=True)
+        elif c == "radar":
+            txt = radar.texto_resumo(est)
+            enviar(txt or "🌴 O Radar do Norte ainda não rodou. A primeira varredura sai em até 4 h.")
         elif c == "promos":
             rec = est.get("promos_recentes", [])
             enviar("🏷️ <b>Últimas promoções que achei</b>\n" + ("\n".join(f"• <a href=\"{p['link']}\">{p['titulo']}</a> ({p['fonte']}, {hora_br(p['quando'])})" for p in rec[:8])
@@ -533,12 +546,51 @@ def ligar_webhook() -> bool:
     if not re.fullmatch(r"https://[\w.-]+\.workers\.dev/telegram", url):
         print("endereço de webhook recusado:", url); return True
     try:
-        avisos.tg("setWebhook", {"url": url, "allowed_updates": ["message"]})
-        est["webhook"] = url
+        avisos.tg("setWebhook", {"url": url, "allowed_updates": ["message", "callback_query"]})
+        est["webhook"], est["webhook_v"] = url, 2
         enviar("⚡ <b>Comandos rápidos ligados!</b> Agora respondo em ~1 min. Teste: /status")
     except Exception as e:
         print("setWebhook falhou:", e)
     return True
+
+
+def reativar_pausas():
+    for i, r in enumerate(cfg["rotas"], 1):
+        if r.get("pausada_ate") and str(r["pausada_ate"]) <= HOJE.isoformat():
+            r.pop("pausada_ate"); salvar_rotas()
+            enviar(f"▶️ A rota {i} ({r['nome']}) voltou a ser vigiada.")
+
+
+def atualizar_webhook():
+    """Inclui os toques nos botões (callback_query) no webhook já ligado."""
+    if est.get("webhook") and est.get("webhook_v") != 2:
+        try:
+            avisos.tg("setWebhook", {"url": est["webhook"], "allowed_updates": ["message", "callback_query"]})
+            est["webhook_v"] = 2
+        except Exception as e:
+            print("webhook v2:", e)
+
+
+def radar_norte():
+    if AV.get("radar") is False:
+        return
+    origens = AV.get("radar_origens") or radar.ORIGENS_PADRAO
+    horas = float(AV.get("radar_horas", 4))
+    if TUDO or minutos_desde("radar_t") >= horas * 60 - 10:
+        est["radar_t"] = iso(AGORA)
+        est["radar_rodada"] = est.get("radar_rodada", 0) + 1
+        boas = radar.rodar(est, origens, iso(AGORA), est["radar_rodada"])
+        print(f"radar: {len(est.get('radar', {}).get('ultimos', {}))} destinos conhecidos, {len(boas)} ofertas boas agora")
+        if boas:
+            texto, botoes = radar.texto_alerta(boas)
+            enviar(texto, botoes, forte=True)
+    # resumo de domingo, depois das 10h
+    agora_br = AGORA.astimezone(BRT)
+    if agora_br.weekday() == 6 and agora_br.hour >= 10 and est.get("radar_resumo") != HOJE.isoformat():
+        txt = radar.texto_resumo(est)
+        if txt:
+            est["radar_resumo"] = HOJE.isoformat()
+            enviar(txt)
 
 
 def comando_do_worker() -> bool:
@@ -550,6 +602,9 @@ def comando_do_worker() -> bool:
         d = json.loads(bruto)
     except ValueError:
         return True
+    if d.get("cq"):  # toque em botão: tira o "carregando" do botão
+        try: avisos.tg("answerCallbackQuery", {"callback_query_id": d["cq"], "text": "🦆 Feito!"})
+        except Exception: pass
     if str(d.get("chat")) == CHAT and str(d.get("texto", "")).startswith("/"):
         print("comando (worker):", d["texto"])
         cmd(d["texto"])
@@ -562,8 +617,9 @@ def main():
     if ligar_webhook() or comando_do_worker():  # rodada curta
         tarefas = []
     else:
-        tarefas = [("comandos", comandos), ("saúde", saude), ("compras", vigiar_compras),
-                   ("promoções", vigiar_promos), ("checagem rápida", checagem_rapida), ("comandos", comandos)]
+        tarefas = [("webhook", atualizar_webhook), ("comandos", comandos), ("pausas", reativar_pausas), ("saúde", saude),
+                   ("compras", vigiar_compras), ("promoções", vigiar_promos), ("checagem rápida", checagem_rapida),
+                   ("radar do norte", radar_norte), ("comandos", comandos)]
     for nome, tarefa in tarefas:
         try:
             tarefa()

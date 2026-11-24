@@ -28,7 +28,14 @@ export default {
     }
     if (req.method !== "POST" || url.pathname !== "/telegram") return txt("QuackVoo 🦆 no ar.");
 
-    const m = (await req.json().catch(() => ({}))).message;
+    const u = await req.json().catch(() => ({}));
+    if (u.callback_query) {  // toque num botão do aviso (🎯 Alvo, ✅ Comprei, ⏸️ Pausar…)
+      const cq = u.callback_query;
+      if (cq.message && String(cq.data || "").startsWith("/"))
+        await acordarVigia(env, { comando: JSON.stringify({ chat: cq.message.chat.id, texto: cq.data, cq: cq.id }) });
+      return txt("ok");
+    }
+    const m = u.message;
     if (!m || !String(m.text || "").startsWith("/")) return txt("ok");
     await acordarVigia(env, { comando: JSON.stringify({ chat: m.chat.id, texto: m.text }) });
     return txt("ok");

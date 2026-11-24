@@ -382,14 +382,18 @@ def _link(url: str, texto: str) -> str:
     return f'<a href="{_h(url)}">{texto}</a>'
 
 
-def mensagem_bonita(r: dict, motivos: list[str]) -> tuple[str, list]:
-    """Relatório em texto pro Telegram: o essencial em cima, links clicáveis, detalhes recolhidos."""
+VENDEDORES_RJ = ("123milhas", "123 milhas", "maxmilhas", "max milhas")
+
+
+def mensagem_bonita(r: dict, motivos: list[str], links_cal: bool = True) -> tuple[str, list]:
+    """Relatório em texto pro Telegram: o essencial em cima, tudo clicável, detalhes recolhidos."""
     if "melhor" not in r:
         return f"⚠️ <b>{_h(r['nome'])}</b>\n{_h('; '.join(r['erros']))}", []
     m, cal = r["melhor"], r["calendario"]
     nome = _h(r["nome"].replace("->", "→"))
     tipo = f"ida e volta · {r['noites']} noites" if r["noites"] else "só ida"
     dias = sorted(cal)
+    hh = HIST_ATUAL.get(r["nome"], {})
     L = [f"✈️ <b>{nome}</b>",
          f"<i>{tipo} · {r['adultos']} adulto{'s' if r['adultos'] > 1 else ''} · {A.d(dias[0]).strftime('%d/%m')} a {A.d(dias[-1]).strftime('%d/%m')}</i>", ""]
     L += [_h(x) for x in motivos if x not in ("Execução manual", "Relatório da busca (sem queda desde a última)")]
@@ -397,24 +401,35 @@ def mensagem_bonita(r: dict, motivos: list[str]) -> tuple[str, list]:
     voo = r.get("voo")
     if voo and voo.get("cia"):
         L.append(f"<i>{_h(voo['cia'])} · {voo['saida'][-5:]} → {voo['chegada'][-5:]} · " + ("direto" if not voo["paradas"] else f"{voo['paradas']} parada{'s' if voo['paradas'] > 1 else ''}") + "</i>")
+    spark = I.sparkline([e["melhor"] for e in hh.get("execucoes", [])] + [m["preco"]])
+    if spark:
+        L.append(f"<code>{spark}</code> <i>últimas buscas</i>")
     v = r.get("veredito")
     if v:
         L += ["", f"{v['emoji']} <b>{v['rotulo']}</b> — {_h(v['conselho'])}", f"<i>{_h(' · '.join(v['detalhes'][:3]))}</i>"]
+
+    # onde comprar (vendedores do Google pro dia mais barato)
+    vend = r.get("vendedores") or []
+    if vend:
+        L += ["", f"🛒 <b>Onde comprar</b> ({_dia(m['dia'])})"]
+        for x in vend[:6]:
+            alerta = " ⚠️" if x["vendedor"].lower().startswith(VENDEDORES_RJ) else ""
+            L.append(f"• {_link(x['url'], _h(x['vendedor']))} {A.reais(x['preco']) if x.get('preco') else ''}{alerta}")
 
     # dias mais baratos, agrupados por preço e clicáveis
     top = sorted(cal.items(), key=lambda kv: (kv[1]["preco"], kv[0]))[:8]
     grupos: dict = {}
     for k, x in top:
         grupos.setdefault(x["preco"], []).append((k, x))
-    L += ["", "<b>Dias mais baratos</b>"]
+    L += ["", "📆 <b>Dias mais baratos</b>"]
     for preco, itens in list(grupos.items())[:3]:
         L.append(f"<b>{A.reais(preco)}</b>  " + " · ".join(_link(x["url"], _dia(k)) for k, x in sorted(itens)[:5]))
 
     per = r.get("periodo")
     fer = I.feriados_no_periodo(dias[0], dias[-1])
     extras = []
-    if per:
-        extras.append(f"📅 Melhor semana: {A.d(per['inicio']).strftime('%d/%m')} a {A.d(per['fim']).strftime('%d/%m')} · média {A.reais(per['media'])}")
+    if per and per["inicio"] in cal:
+        extras.append(f"🗓️ Melhor semana: {_link(cal[per['inicio']]['url'], A.d(per['inicio']).strftime('%d/%m') + ' a ' + A.d(per['fim']).strftime('%d/%m'))} · média {A.reais(per['media'])}")
     for kf, nome_f in fer[:3]:
         janela = {x: y for x, y in cal.items() if 0 <= (A.d(kf) - A.d(x)).days <= 2}
         if janela:
@@ -432,21 +447,36 @@ def mensagem_bonita(r: dict, motivos: list[str]) -> tuple[str, list]:
         L += [f"<i>{_h(x)}</i>" for x in c.get("horarios", [])]
         L.append("<i>Passagens separadas: deixe 4 h+ de folga ou durma na escala.</i>")
 
-    # detalhes recolhidos: meses e calendário
+    # outros sites com a mesma busca pronta (recolhido)
+    sites = I.links_sites(r["origem"], r["destino"], m["dia"], r["noites"], r["adultos"])
+    blocos = [f"🔎 <b>Mesma busca ({_dia(m['dia'])}) em outros sites</b>"]
+    for grupo, lista in sites.items():
+        itens = [_link(u, _h(n)) + (" ⚠️" if nota == I.AVISO_RJ else "") for n, u, nota in lista]
+        blocos.append(f"<b>{grupo}:</b> " + " · ".join(itens))
+    blocos.append("<i>⚠️ 123milhas e MaxMilhas estão em recuperação judicial.</i>")
+
+    # meses e calendário (recolhido)
     det = ["<b>Por mês</b>"]
     for x in r.get("meses", []):
         det.append(f"{x['mes']} · <b>{A.reais(x['menor'])}</b> {_link(cal[x['dia']]['url'], _dia(x['dia']))} · média {A.reais(x['media'])}")
     sem = sorted(r.get("semana", []), key=lambda x: x[1])
     if sem:
         det.append(f"Mais barato sair: <b>{sem[0][0]}</b> · mais caro: {sem[-1][0]}")
-    base = len("\n".join(L)) + len("\n".join(det))
-    calendario = I.texto_calor(cal)
-    if base + len(calendario) < 3700:
-        det += ["", "<b>Calendário</b>", calendario]
-    L += ["", "<blockquote expandable>" + "\n".join(det) + "</blockquote>"]
-    comp = " · ".join(_link(u, t) for t, u in I.links_comparar(r["origem"], r["destino"], m["dia"], r["noites"], r["adultos"]))
-    L += [f"<i>Comparar: {comp} · preços com taxas, confira antes de pagar</i>"]
-    botoes = [[(f"🔎 Abrir {_dia(m['dia'])} no Google Voos", m["url"])]]
+    calendario = I.texto_calor(cal, links=links_cal)
+    previa = "\n".join(L + blocos + det) + calendario
+    if avisos.tamanho_visivel(previa) > 3900:  # período muito longo: calendário só nos 3 meses mais baratos
+        meses_bons = sorted({k[:7] for k, _ in sorted(cal.items(), key=lambda kv: kv[1]["preco"])[:40]})[:3]
+        calendario = "\n".join(I.texto_calor(cal, mm, links=links_cal) for mm in meses_bons)
+    det += ["", "<b>Calendário</b> <i>(toque num quadradinho pra abrir o dia)</i>" if links_cal else "<b>Calendário</b>", calendario]
+    L += ["", "<blockquote expandable>" + "\n".join(blocos) + "</blockquote>",
+          "<blockquote expandable>" + "\n".join(det) + "</blockquote>",
+          "<i>Preços com taxas. Confira antes de pagar.</i>"]
+
+    i = r.get("indice", 1)
+    alvo = max(100, int(m["preco"] * 0.9 // 50 * 50))
+    botoes = [[(f"🔎 Abrir {_dia(m['dia'])} no Google Voos", m["url"])],
+              [(f"🎯 Alvo {A.reais(alvo)}", f"/alvo {i} {alvo}"), ("✅ Comprei", f"/comprei {i} {m['preco']} {A.d(m['dia']).strftime('%d/%m/%Y')}")],
+              [("⏸️ Pausar 7 dias", f"/pausar {i} 7"), ("📊 Status", "/status")]]
     return "\n".join(L), botoes
 
 
@@ -456,12 +486,16 @@ def enviar_telegram(avisar: list[tuple[dict, list[str]]]) -> None:
         som = I.forte(motivos, res.get("veredito"))
         silencioso = not som or (avisos.hora_silenciosa() and not (res.get("veredito") or {}).get("nivel") == "promo")
         if CFG_AV.get("formato_telegram", "texto") != "imagem":
-            try:
-                texto, botoes = mensagem_bonita(res, motivos)
-                avisos.mensagem(texto, botoes, silencioso=silencioso)
-                print("Telegram: mensagem enviada."); continue
-            except Exception as e:
-                print(f"mensagem bonita falhou ({e}); tentando imagem")
+            enviado = False
+            for links_cal in (True, False):  # se o Telegram recusar tantos links, manda o calendário sem link
+                try:
+                    texto, botoes = mensagem_bonita(res, motivos, links_cal)
+                    avisos.mensagem(texto, botoes, silencioso=silencioso)
+                    print("Telegram: mensagem enviada" + ("" if links_cal else " (calendário sem links)")); enviado = True; break
+                except Exception as e:
+                    print(f"mensagem (links_cal={links_cal}) falhou: {e}")
+            if enviado:
+                continue
         try:
             _, html, _ = montar([(res, motivos)])
             legenda, botoes = legenda_e_botoes(res, motivos)
@@ -489,7 +523,9 @@ def main():
 
     avisar, erros_meta = [], []
     economia = (VIG.get("apify") or {}).get("pct", 0) >= 0.95  # crédito quase no fim: não testa conexões
-    for r in cfg["rotas"]:
+    for indice, r in enumerate(cfg["rotas"], 1):
+        if r.get("pausada_ate") and str(r["pausada_ate"]) > hoje.isoformat():
+            print(f"⏸️  {r['nome']}: pausada até {r['pausada_ate']}"); continue
         if r.get("ativa") is False:
             print(f"⏸️  {r['nome']}: pausada no painel"); continue
         h = hist.setdefault(r["nome"], {"execucoes": []})
@@ -507,6 +543,7 @@ def main():
             res = {"nome": r["nome"], "erros": [str(e)]}
         if "conexao" not in res and h.get("conexao"):
             res["conexao"] = h["conexao"]  # mantém a última conexão testada
+        res["indice"] = indice
         if "melhor" in res:
             res["veredito"] = I.veredito(res["melhor"]["preco"], res["calendario"], h, r)
         motivos = decidir(res, r, h, dia_resumo)
@@ -517,6 +554,8 @@ def main():
                                       A.mais(m["dia"], res["noites"]) if res["noites"] else None)
             if voo:
                 res["voo"] = voo
+                if not res["noites"]:
+                    res["vendedores"] = fontes.onde_comprar(r["origem"], r["destino"], m["dia"], r.get("adultos", 1), SERP, voo.get("booking_token"))
                 if voo.get("google"):
                     res["veredito"] = I.veredito(m["preco"], res["calendario"], h, r, voo["google"])
         if "melhor" in res:

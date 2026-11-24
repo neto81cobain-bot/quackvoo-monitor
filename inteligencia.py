@@ -210,8 +210,18 @@ def html_calor(cal: dict, fer: list[tuple[str, str]] | None = None, max_meses=6)
     return "<div style='margin-top:10px'><b>Calendário de preços</b><div style='margin-top:4px'>" + "".join(blocos) + "</div>" + legenda + "</div>"
 
 
-def texto_calor(cal: dict, mes: str | None = None) -> str:
-    """Versão em texto (Telegram) do calendário: 🟩🟨🟥 por dia."""
+def sparkline(valores: list[float]) -> str:
+    """▁▂▃▅▇ — evolução do preço em uma linha de texto."""
+    v = [x for x in valores if x][-14:]
+    if len(v) < 3:
+        return ""
+    lo, hi = min(v), max(v)
+    blocos = "▁▂▃▄▅▆▇█"
+    return "".join(blocos[0 if hi == lo else round((x - lo) / (hi - lo) * 7)] for x in v)
+
+
+def texto_calor(cal: dict, mes: str | None = None, links: bool = False) -> str:
+    """Versão em texto (Telegram) do calendário: 🟩🟨🟥 por dia (links=True: cada dia abre no Google Voos)."""
     if not cal:
         return "Sem preços ainda."
     precos = sorted(v["preco"] for v in cal.values())
@@ -225,14 +235,17 @@ def texto_calor(cal: dict, mes: str | None = None) -> str:
         x = prim
         while x.month == m:
             k = x.isoformat()
-            cel.append("⬜" if k not in cal else "🟩" if cal[k]["preco"] <= t1 else "🟨" if cal[k]["preco"] <= t2 else "🟥")
+            q = "⬜" if k not in cal else "🟩" if cal[k]["preco"] <= t1 else "🟨" if cal[k]["preco"] <= t2 else "🟥"
+            if links and k in cal and cal[k].get("url"):
+                q = f'<a href="{cal[k]["url"].replace("&", "&amp;")}">{q}</a>'
+            cel.append(q)
             x += timedelta(days=1)
-        if all(c in ("　", "⬜") for c in cel):
+        if all(c in ("　", "⬜") for c in cel):  # (células com link nunca são vazias)
             continue
         barato = min(((k, v) for k, v in cal.items() if k.startswith(mm)), key=lambda kv: kv[1]["preco"])
         out.append(f"<b>{A.MESES[m - 1]}/{str(a)[2:]}</b> · menor {A.reais(barato[1]['preco'])} dia {A.d(barato[0]).day}")
         out.append("S T Q Q S S D")
-        out += ["".join(cel[i:i + 7]) for i in range(0, len(cel), 7) if any(c in ("🟩", "🟨", "🟥") for c in cel[i:i + 7])]
+        out += ["".join(cel[i:i + 7]) for i in range(0, len(cel), 7) if any(c[-5:] in ("🟩</a>", "🟨</a>", "🟥</a>") or c in ("🟩", "🟨", "🟥") for c in cel[i:i + 7])]
         out.append("")
     out.append(f"🟩 até {A.reais(t1)} · 🟨 até {A.reais(t2)} · 🟥 mais caro")
     return "\n".join(out)
