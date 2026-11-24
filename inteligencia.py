@@ -236,7 +236,7 @@ def texto_calor(cal: dict, mes: str | None = None, links: bool = False) -> str:
         while x.month == m:
             k = x.isoformat()
             q = "⬜" if k not in cal else "🟩" if cal[k]["preco"] <= t1 else "🟨" if cal[k]["preco"] <= t2 else "🟥"
-            if links and k in cal and cal[k].get("url"):
+            if links and q == "🟩" and cal[k].get("url"):  # só os dias baratos (o Telegram limita a quantidade de links)
                 q = f'<a href="{cal[k]["url"].replace("&", "&amp;")}">{q}</a>'
             cel.append(q)
             x += timedelta(days=1)

@@ -79,7 +79,9 @@ def calendario(origem: str, destino: str, inicio: str, fim: str, adultos: int, n
             print(f"Fli {origem}→{destino}: {e}"); r = {}
         hoje = date.today() + timedelta(days=1)
         esperados = (dia(fim) - max(dia(inicio), hoje)).days + 1
-        if esperados <= 0 or len(r) >= 0.8 * esperados or not token:
+        global ULTIMA_COBERTURA
+        ULTIMA_COBERTURA = len(r) / esperados if esperados > 0 else 1
+        if esperados <= 0 or len(r) >= 0.6 * esperados or not token:
             FONTE_USADA.add("fli")
             return r
         print(f"Fli cobriu só {len(r)}/{esperados} dias de {origem}→{destino}; completando com a Apify")
@@ -95,6 +97,7 @@ def calendario(origem: str, destino: str, inicio: str, fim: str, adultos: int, n
 
 FONTE_USADA: set = set()
 DIAS_APIFY = 0  # dias de calendário cobrados pela Apify nesta execução
+ULTIMA_COBERTURA: float | None = None  # fração de dias que o Fli achou na última perna
 
 
 def calendario_apify(origem: str, destino: str, inicio: str, fim: str, adultos: int, noites: int | None, token: str) -> dict[str, dict]:

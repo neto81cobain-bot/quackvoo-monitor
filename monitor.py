@@ -57,7 +57,14 @@ def cal(o, d, ini, fim, adultos, noites=None, perna=False):
         custo_dias += (A.d(fim) - max(A.d(ini), hoje)).days + 1
         return cal_demo(o, d, ini, fim, adultos, noites)
     fonte = "fli_primeiro" if perna else str(CFG_AV.get("fonte", "auto"))
+    cob = HIST_ATUAL.setdefault("_fli", {})
+    chave = f"{o}>{d}"
+    if perna and cob.get(chave, 1) < 0.3:
+        fonte = "auto"  # o Fli quase nunca acha esse trecho: nem tenta (economiza tempo)
+    fontes.ULTIMA_COBERTURA = None
     r = fontes.calendario(o, d, ini, fim, adultos, noites, APIFY, fonte)
+    if fontes.ULTIMA_COBERTURA is not None:
+        cob[chave] = round(fontes.ULTIMA_COBERTURA, 2)
     custo_dias = fontes.DIAS_APIFY
     return r
 
@@ -467,7 +474,7 @@ def mensagem_bonita(r: dict, motivos: list[str], links_cal: bool = True) -> tupl
     if avisos.tamanho_visivel(previa) > 3900:  # período muito longo: calendário só nos 3 meses mais baratos
         meses_bons = sorted({k[:7] for k, _ in sorted(cal.items(), key=lambda kv: kv[1]["preco"])[:40]})[:3]
         calendario = "\n".join(I.texto_calor(cal, mm, links=links_cal) for mm in meses_bons)
-    det += ["", "<b>Calendário</b> <i>(toque num quadradinho pra abrir o dia)</i>" if links_cal else "<b>Calendário</b>", calendario]
+    det += ["", "<b>Calendário</b> <i>(toque num 🟩 pra abrir o dia)</i>" if links_cal else "<b>Calendário</b>", calendario]
     L += ["", "<blockquote expandable>" + "\n".join(blocos) + "</blockquote>",
           "<blockquote expandable>" + "\n".join(det) + "</blockquote>",
           "<i>Preços com taxas. Confira antes de pagar.</i>"]
