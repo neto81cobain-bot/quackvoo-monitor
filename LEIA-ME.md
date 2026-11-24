@@ -93,7 +93,11 @@ aquele trecho (nos dois sentidos). Sem "para", aparece em qualquer trecho daquel
 O bot tem menu: ✈️ Passagem de avião · 🚤 Barco e lancha · 🌴 Promoções · 🔔 O que estou vigiando · ⚙️ Ajustes.
 Navegar e buscar barco é instantâneo (o Worker responde sozinho). O que depende dos seus dados de voo (preços agora,
 buscar tudo, mudar alvo, pausar) acorda o vigia no GitHub e chega em ~1 min. Também dá pra só escrever um trecho:
-`Oriximiná Santarém`, `Santarém para Óbidos 12/12`.
+`Oriximiná Santarém`, `Santarém para Óbidos 12/12`, `Oriximiná Santarém 20/12 a 24/12` (até 7 dias).
+O botão **📅 Datas** abre um calendário: toque no dia e escolha 1, 3, 5 ou 7 dias. No avião, **📅 Preço numa data** usa o mesmo calendário.
+
+Todas as mensagens seguem o mesmo padrão: título · período em itálico · 💚 melhor opção · blocos por dia com
+`hora/dia · preço · duração` e um `└` com o detalhe (barco, companhia, parada). O preço é sempre o link.
 
 Como funciona por dentro: o vigia manda pro Worker (provando com OIDC que é este repositório) o token do bot e um
 resumo das rotas, trechos e agenda; o Worker guarda num cofre KV (`quackvoo-qv`) e só obedece ao seu chat.
