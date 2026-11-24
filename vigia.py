@@ -36,7 +36,8 @@ BRT = timezone(timedelta(hours=-3))
 TUDO = "--tudo" in sys.argv
 AGORA = datetime.now(timezone.utc)
 HOJE = AGORA.astimezone(BRT).date()
-VERSAO_COMANDOS = 7
+VERSAO_COMANDOS = 8
+NOME_BOT = "Xaropinho das viagens"
 WORKER = os.getenv("WORKER_URL", "https://quackvoo.quackvoo-neto.workers.dev")
 
 cfg = yaml.safe_load(ROTAS.read_text(encoding="utf-8")) or {}
@@ -325,7 +326,7 @@ def saude():
 
 
 # ---------------------------------------------------------------- 5. comandos do Telegram
-AJUDA = """<b>QuackVoo</b> 🦆
+AJUDA = """<b>Xaropinho das viagens</b> 🐭
 Toque em /menu: tem botão pra tudo (avião, barco e lancha, promoções).
 
 <b>Se preferir digitar</b>
@@ -530,6 +531,11 @@ def comandos():
     if est.get("comandos_v") != VERSAO_COMANDOS:
         try:
             avisos.tg("setMyCommands", {"commands": [{"command": a, "description": b} for a, b in COMANDOS_MENU]})
+            for metodo, dados in (("setMyName", {"name": NOME_BOT}),
+                                  ("setMyShortDescription", {"short_description": "Passagem de avião, barco e lancha no Norte: aviso de queda de preço e promoção."}),
+                                  ("setMyDescription", {"description": "🐭 Xaropinho das viagens\nVigia passagens de avião e de barco/lancha (Yjara, Navegam) e promoções saindo do Norte. Toque em /menu."})):
+                try: avisos.tg(metodo, dados)
+                except Exception as e: print(metodo, e)
             est["comandos_v"] = VERSAO_COMANDOS
         except Exception as e:
             print("menu de comandos:", e)
@@ -569,7 +575,7 @@ def ligar_webhook() -> bool:
 def anunciar_menu():
     if est.get("menu_anunciado") == 1 or not est.get("worker_t"):
         return
-    enviar("🦆 <b>Bot de cara nova!</b>\nAgora tem menu com botões: avião, 🚤 barco e lancha (resposta na hora, Yjara + Navegam), "
+    enviar("🐭 <b>Bot de cara nova!</b>\nAgora tem menu com botões: avião, 🚤 barco e lancha (resposta na hora, Yjara + Navegam), "
            "📒 agenda de lanchas com WhatsApp e promoções.\n\nDica: é só escrever um trecho, tipo <code>Oriximiná Santarém</code>.",
            [[("🏠 Abrir o menu", "m")]], forte=True)
     est["menu_anunciado"] = 1
@@ -734,7 +740,7 @@ def comando_do_worker() -> bool:
     except ValueError:
         return True
     if d.get("cq"):  # toque em botão: tira o "carregando" do botão
-        try: avisos.tg("answerCallbackQuery", {"callback_query_id": d["cq"], "text": "🦆 Feito!"})
+        try: avisos.tg("answerCallbackQuery", {"callback_query_id": d["cq"], "text": "🐭 Feito!"})
         except Exception: pass
     if str(d.get("chat")) == CHAT and str(d.get("texto", "")).startswith("/"):
         print("comando (worker):", d["texto"])

@@ -190,7 +190,7 @@ def texto_conexao(s: dict, o: str, dst: str, n: int) -> list[str]:
 def montar(res_avisar: list[tuple[dict, list[str]]]) -> tuple[str, str, str]:
     principais = [r for r, _ in res_avisar if "melhor" in r]
     p0 = principais[0]
-    assunto = f"🦆 Quack! {p0['origem']}→{p0['destino']} a partir de {A.reais(p0['melhor']['preco'])}" + (f" (+{len(principais)-1} rotas)" if len(principais) > 1 else "")
+    assunto = f"🐭 Xaropinho das viagens: {p0['origem']}→{p0['destino']} a partir de {A.reais(p0['melhor']['preco'])}" + (f" (+{len(principais)-1} rotas)" if len(principais) > 1 else "")
     txt, html = [], []
     for r, motivos in res_avisar:
         if "melhor" not in r:
@@ -273,7 +273,7 @@ def montar(res_avisar: list[tuple[dict, list[str]]]) -> tuple[str, str, str]:
 
 def montar_telegram(res_avisar: list[tuple[dict, list[str]]]) -> str:
     linhas = [
-        "<b>Quack! 🦆</b>",
+        "<b>Xaropinho das viagens 🐭</b>",
         f"<i>Relatório de {hoje.strftime('%d/%m/%Y')} · preços do Google Voos (totais, com taxas)</i>",
         "",
     ]

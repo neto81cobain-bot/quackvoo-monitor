@@ -276,7 +276,7 @@ async function mostrar(env, cfg, chat, msgId, texto, botoes) {
 const VOLTAR = [["🏠 Menu", "m"]];
 function telas(cfg, tela) {
   const rotas = cfg.rotas || [];
-  if (tela === "m") return ["🦆 <b>QuackVoo</b>\nO que você quer ver?", [
+  if (tela === "m") return ["🐭 <b>Xaropinho das viagens</b>\nO que você quer ver?", [
     [["✈️ Passagem de avião", "m:av"]], [["🚤 Barco e lancha", "m:bc"]], [["🌴 Promoções do Norte", "m:pr"]],
     [["🔔 O que estou vigiando", "m:vg"], ["⚙️ Ajustes", "m:cf"]]]];
   if (tela === "m:av") {
@@ -538,7 +538,7 @@ export default {
                    : { message: { chat: { id: cfg.chat }, text: t } };
       try { await tratar(env, u, cfg); return txt("ok"); } catch (e) { return txt("erro: " + (e.stack || e), 500); }
     }
-    if (req.method !== "POST" || url.pathname !== "/telegram") return txt("QuackVoo 🦆 no ar.");
+    if (req.method !== "POST" || url.pathname !== "/telegram") return txt("Xaropinho das viagens 🐭 no ar.");
 
     const u = await req.json().catch(() => ({}));
     const cfg = env.QV ? await env.QV.get("cfg", "json") : null;
