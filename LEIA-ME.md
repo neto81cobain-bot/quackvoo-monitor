@@ -54,7 +54,7 @@ Além das 2 buscas completas por dia (`monitor.py`), o **vigia** (`vigia.py`) ro
 | O quê | Como | Custo |
 |---|---|---|
 | ⚡ Checagem rápida | a cada 2 h (ajustável), só nos ~8 dias mais baratos de cada rota | ~US$ 0,90/mês |
-| 🏷️ Promoções dos blogs | Melhores Destinos, Passagens Imperdíveis e Passageiro de Primeira; avisa se o post fala do seu destino | grátis |
+| 🏷️ Promoções postadas | blogs (Melhores Destinos, Passageiro de Primeira, Pontos pra Voar, Viaje na Viagem), Portal Amazônia, canais públicos do Telegram (Melhores Destinos, Passageiro de Primeira, Cartões e Viagens, Promobit) e Google Notícias; avisa post do seu destino, saindo do Norte, 📦 pacotes e promoção das companhias (ignora milhas/pontos) | grátis |
 | 🛟 Depois da compra | `/comprei 1 1172 29/05`: vigia por 24 h; se cair, avisa pra recomprar e desistir da antiga (ANAC: compra com 7+ dias do voo) | centavos |
 | ⏰ Busca pulada | se o GitHub pular o horário agendado, o vigia dispara a busca de novo | grátis |
 | 🩺 Saúde | avisa se o monitor parar, se der erro de token ou se a Apify/SerpAPI estiver acabando (pausa a checagem rápida acima de 85%) | grátis |
