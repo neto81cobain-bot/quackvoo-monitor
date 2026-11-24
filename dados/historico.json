@@ -147,6 +147,11 @@
     "t": "2026-11-24",
     "melhor": 1187,
     "dia": "2027-05-29"
+   },
+   {
+    "t": "2026-11-24",
+    "melhor": 1187,
+    "dia": "2027-05-29"
    }
   ],
   "assinatura": "MAO>VVI|n0|a1",
@@ -155,22 +160,22 @@
    "dia": "2027-05-29",
    "visto": "2026-11-23"
   },
-  "avisou_alvo": true,
+  "avisou_alvo": false,
   "conexao": {
    "hub": "GRU",
-   "dia": "2027-05-29",
+   "dia": "2027-05-30",
    "total": 1258,
    "ida": {
     "total": 1258,
     "p1": {
      "preco": 640,
-     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDTUFPcgcIARIDR1JVQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20MAO%20to%20GRU%20on%202027-05-30%20one%20way"
     },
     "p2": {
      "preco": 618,
-     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDR1JVcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
+     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20GRU%20to%20VVI%20on%202027-05-31%20one%20way"
     },
-    "data2": "2027-05-29"
+    "data2": "2027-05-31"
    },
    "volta": null,
    "economia": -71,
@@ -283,12 +288,26 @@
    "2027-09-04": 1324,
    "2027-09-05": 1677
   },
-  "ultima_iso": "2026-11-24T05:54:02+00:00",
+  "ultima_iso": "2026-11-24T12:54:18+00:00",
   "promo_avisada": 1187
  },
  "_meta": {
-  "ultima": "2026-11-24T05:54:02+00:00",
-  "custo_dias": 1358,
+  "ultima": "2026-11-24T12:54:18+00:00",
+  "custo_dias": 733,
   "erros": []
+ },
+ "_fli": {
+  "MAO>GRU": 0.82,
+  "GRU>VVI": 0.81,
+  "MAO>VCP": 0.82,
+  "VCP>VVI": 0.0,
+  "MAO>BSB": 1.0,
+  "BSB>VVI": 0.0,
+  "MAO>CGB": 0.14,
+  "CGB>VVI": 0.0,
+  "MAO>CGH": 1.0,
+  "CGH>VVI": 0.0,
+  "MAO>STM": 0.99,
+  "STM>VVI": 0.0
  }
 }
