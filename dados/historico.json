@@ -142,6 +142,11 @@
     "t": "2026-11-24",
     "melhor": 1187,
     "dia": "2027-05-29"
+   },
+   {
+    "t": "2026-11-24",
+    "melhor": 1187,
+    "dia": "2027-05-29"
    }
   ],
   "assinatura": "MAO>VVI|n0|a1",
@@ -159,11 +164,11 @@
     "total": 1258,
     "p1": {
      "preco": 640,
-     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20MAO%20to%20GRU%20on%202027-05-29%20one%20way"
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDTUFPcgcIARIDR1JVQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
     },
     "p2": {
      "preco": 618,
-     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20GRU%20to%20VVI%20on%202027-05-29%20one%20way"
+     "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI3LTA1LTI5agcIARIDR1JVcgcIARIDVlZJQAFIAXABggELCP___________wGYAQI&hl=pt&curr=BRL&gl=BR"
     },
     "data2": "2027-05-29"
    },
@@ -278,12 +283,12 @@
    "2027-09-04": 1324,
    "2027-09-05": 1677
   },
-  "ultima_iso": "2026-11-24T05:23:07+00:00",
+  "ultima_iso": "2026-11-24T05:54:02+00:00",
   "promo_avisada": 1187
  },
  "_meta": {
-  "ultima": "2026-11-24T05:23:07+00:00",
-  "custo_dias": 733,
+  "ultima": "2026-11-24T05:54:02+00:00",
+  "custo_dias": 1358,
   "erros": []
  }
 }
