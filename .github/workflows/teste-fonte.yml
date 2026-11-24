@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install requests PyYAML flights
+      - run: pip install requests PyYAML "flights @ git+https://github.com/punitarani/fli.git"
       - name: Comparar
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
