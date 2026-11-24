@@ -606,7 +606,9 @@ def ofertas_oficiais():
     lista, erros = ofertas.coletar()
     for e in erros: print("ofertas:", e)
     origens = AV.get("radar_origens") or radar.ORIGENS_PADRAO
-    destinos = [r["destino"] for _, r in ativas()]
+    destinos = {}
+    for _, r in ativas():
+        destinos.setdefault(r["destino"], set()).update([r["origem"], *(r.get("conexoes") or [])])
     boas = ofertas.avaliar(est, lista, origens, destinos, iso(AGORA))
     print(f"ofertas oficiais: {len(lista)} trechos lidos, {len(boas)} pra avisar")
     if boas:

@@ -5,7 +5,10 @@ rotas = [r for r in cfg["rotas"] if r.get("ativa") is not False]
 lista, erros = ofertas.coletar()
 print("OFICIAIS lidas:", len(lista), "erros:", erros)
 est = {}
-boas = ofertas.avaliar(est, lista, radar.ORIGENS_PADRAO, [r["destino"] for r in rotas], "2026-11-24T10:00:00+00:00")
+dest = {}
+for r in rotas: dest.setdefault(r["destino"], set()).update([r["origem"], *(r.get("conexoes") or [])])
+ofertas.avaliar(est, lista, radar.ORIGENS_PADRAO, dest, "2026-11-24T10:00:00+00:00")
+boas = ofertas.avaliar(est, lista, radar.ORIGENS_PADRAO, dest, "2026-11-24T12:00:00+00:00")
 print("OFICIAIS do Norte/destino:", len(est["oficiais"]["ultimas"]), "| avisaria agora:", len(boas))
 for o in sorted(est["oficiais"]["ultimas"].values(), key=lambda o: o["preco"])[:15]:
     print("  OF", o["cia"], o["nome_o"], "→", o["nome_d"], o["preco"], o["ida"], o["volta"] or "só ida")

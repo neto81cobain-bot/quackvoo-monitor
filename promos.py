@@ -155,5 +155,8 @@ def buscar(rotas: list[dict], extras: list[str], fontes: dict | None = None, ori
         except Exception as e:
             erros.append(f"{nome}: {str(e)[:80]}")
     agora = datetime.now(timezone.utc)
+    for p in posts:  # algumas fontes mandam data sem fuso: considera UTC
+        if p["quando"] and p["quando"].tzinfo is None:
+            p["quando"] = p["quando"].replace(tzinfo=timezone.utc)
     posts = [p for p in posts if not p["quando"] or (agora - p["quando"]).days < 4]  # só o que é recente
     return combinar(posts, rotas, extras, origens), erros

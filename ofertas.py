@@ -70,9 +70,10 @@ def coletar() -> tuple[list[dict], list[str]]:
     return list(unicas.values()), erros
 
 
-def avaliar(est: dict, ofertas: list[dict], origens: list[str], destinos: list[str], agora_iso: str) -> list[dict]:
+def avaliar(est: dict, ofertas: list[dict], origens: list[str], destinos: dict[str, set], agora_iso: str) -> list[dict]:
     """Guarda o histórico e devolve as que merecem aviso: saindo do Norte (ou pro destino de uma rota sua)
     e bem abaixo do que a própria cia costuma anunciar nesse trecho (ou primeira vez que aparece pro seu destino)."""
+    primeira = "oficiais" not in est  # na primeira rodada só aprende (senão viriam dezenas de avisos de uma vez)
     of = est.setdefault("oficiais", {"hist": {}, "avisadas": {}, "ultimas": {}})
     boas = []
     for o in ofertas:
@@ -83,13 +84,18 @@ def avaliar(est: dict, ofertas: list[dict], origens: list[str], destinos: list[s
             h.append([agora_iso[:10], o["preco"]])
             of["hist"][k] = h[-40:]
         o["normal"] = normal
-        interessa = o["origem"] in origens or o["destino"] in destinos
+        # interessa: sai do Norte, ou vai pro destino de uma rota sua saindo da origem dela ou de um hub das escalas
+        pro_destino = o["origem"] in destinos.get(o["destino"], set()) or (o["origem"] == "SAO" and destinos.get(o["destino"], set()) & {"GRU", "CGH", "VCP"})
+        interessa = o["origem"] in origens or bool(pro_destino)
         if not interessa:
             continue
         of["ultimas"][k] = {**o, "visto": agora_iso}
         ja = of["avisadas"].get(k)
         caiu = normal and o["preco"] <= 0.85 * normal
-        novo_destino = o["destino"] in destinos and not ja
+        novo_destino = bool(pro_destino) and not ja
+        if primeira:
+            of["avisadas"].setdefault(k, o["preco"]) if pro_destino else None
+            continue
         if (caiu or novo_destino) and (not ja or o["preco"] < ja * 0.95):
             of["avisadas"][k] = o["preco"]
             boas.append(o)
