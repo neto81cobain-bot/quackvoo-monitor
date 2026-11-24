@@ -230,9 +230,9 @@ def texto_calor(cal: dict, mes: str | None = None) -> str:
         if all(c in ("　", "⬜") for c in cel):
             continue
         barato = min(((k, v) for k, v in cal.items() if k.startswith(mm)), key=lambda kv: kv[1]["preco"])
-        out.append(f"<b>{A.MESES[m - 1]}/{str(a)[2:]}</b> · menor {A.reais(barato[1]['preco'])} em {A.br(barato[0])}")
+        out.append(f"<b>{A.MESES[m - 1]}/{str(a)[2:]}</b> · menor {A.reais(barato[1]['preco'])} dia {A.d(barato[0]).day}")
         out.append("S T Q Q S S D")
-        out += ["".join(cel[i:i + 7]) for i in range(0, len(cel), 7)]
+        out += ["".join(cel[i:i + 7]) for i in range(0, len(cel), 7) if any(c in ("🟩", "🟨", "🟥") for c in cel[i:i + 7])]
         out.append("")
     out.append(f"🟩 até {A.reais(t1)} · 🟨 até {A.reais(t2)} · 🟥 mais caro")
     return "\n".join(out)

@@ -369,14 +369,102 @@ def legenda_e_botoes(r: dict, motivos: list[str]) -> tuple[str, list[list[tuple[
     return legenda, botoes
 
 
+def _h(x) -> str:
+    return str(x).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _dia(k: str) -> str:
+    """'sáb 29/05'"""
+    return f"{A.SEMANA[A.d(k).weekday()]} {A.d(k).strftime('%d/%m')}"
+
+
+def _link(url: str, texto: str) -> str:
+    return f'<a href="{_h(url)}">{texto}</a>'
+
+
+def mensagem_bonita(r: dict, motivos: list[str]) -> tuple[str, list]:
+    """Relatório em texto pro Telegram: o essencial em cima, links clicáveis, detalhes recolhidos."""
+    if "melhor" not in r:
+        return f"⚠️ <b>{_h(r['nome'])}</b>\n{_h('; '.join(r['erros']))}", []
+    m, cal = r["melhor"], r["calendario"]
+    nome = _h(r["nome"].replace("->", "→"))
+    tipo = f"ida e volta · {r['noites']} noites" if r["noites"] else "só ida"
+    dias = sorted(cal)
+    L = [f"✈️ <b>{nome}</b>",
+         f"<i>{tipo} · {r['adultos']} adulto{'s' if r['adultos'] > 1 else ''} · {A.d(dias[0]).strftime('%d/%m')} a {A.d(dias[-1]).strftime('%d/%m')}</i>", ""]
+    L += [_h(x) for x in motivos if x not in ("Execução manual", "Relatório da busca (sem queda desde a última)")]
+    L.append(f"💰 <b>{_link(m['url'], A.reais(m['preco']))}</b> · {_dia(m['dia'])}")
+    voo = r.get("voo")
+    if voo and voo.get("cia"):
+        L.append(f"<i>{_h(voo['cia'])} · {voo['saida'][-5:]} → {voo['chegada'][-5:]} · " + ("direto" if not voo["paradas"] else f"{voo['paradas']} parada{'s' if voo['paradas'] > 1 else ''}") + "</i>")
+    v = r.get("veredito")
+    if v:
+        L += ["", f"{v['emoji']} <b>{v['rotulo']}</b> — {_h(v['conselho'])}", f"<i>{_h(' · '.join(v['detalhes'][:3]))}</i>"]
+
+    # dias mais baratos, agrupados por preço e clicáveis
+    top = sorted(cal.items(), key=lambda kv: (kv[1]["preco"], kv[0]))[:8]
+    grupos: dict = {}
+    for k, x in top:
+        grupos.setdefault(x["preco"], []).append((k, x))
+    L += ["", "<b>Dias mais baratos</b>"]
+    for preco, itens in list(grupos.items())[:3]:
+        L.append(f"<b>{A.reais(preco)}</b>  " + " · ".join(_link(x["url"], _dia(k)) for k, x in sorted(itens)[:5]))
+
+    per = r.get("periodo")
+    fer = I.feriados_no_periodo(dias[0], dias[-1])
+    extras = []
+    if per:
+        extras.append(f"📅 Melhor semana: {A.d(per['inicio']).strftime('%d/%m')} a {A.d(per['fim']).strftime('%d/%m')} · média {A.reais(per['media'])}")
+    for kf, nome_f in fer[:3]:
+        janela = {x: y for x, y in cal.items() if 0 <= (A.d(kf) - A.d(x)).days <= 2}
+        if janela:
+            kk, vv = min(janela.items(), key=lambda kv: kv[1]["preco"])
+            extras.append(f"🎉 {nome_f} ({A.d(kf).strftime('%d/%m')}): {_link(vv['url'], A.reais(vv['preco']))} saindo {_dia(kk)}")
+    if extras:
+        L += [""] + extras
+
+    c = r.get("conexao")
+    if c and c.get("economia", 0) > 0 and "p1" in (c.get("ida") or {}):
+        ida, hub = c["ida"], c["hub"]
+        L += ["", f"🔀 <b>Escala por conta própria: {A.reais(c['total'])}</b> (economia de {A.reais(c['economia'])})",
+              _link(ida["p1"]["url"], f"{r['origem']}→{hub} {_dia(c['dia'])}") + f" {A.reais(ida['p1']['preco'])}  +  "
+              + _link(ida["p2"]["url"], f"{hub}→{r['destino']} {_dia(ida['data2'])}") + f" {A.reais(ida['p2']['preco'])}"]
+        L += [f"<i>{_h(x)}</i>" for x in c.get("horarios", [])]
+        L.append("<i>Passagens separadas: deixe 4 h+ de folga ou durma na escala.</i>")
+
+    # detalhes recolhidos: meses e calendário
+    det = ["<b>Por mês</b>"]
+    for x in r.get("meses", []):
+        det.append(f"{x['mes']} · <b>{A.reais(x['menor'])}</b> {_link(cal[x['dia']]['url'], _dia(x['dia']))} · média {A.reais(x['media'])}")
+    sem = sorted(r.get("semana", []), key=lambda x: x[1])
+    if sem:
+        det.append(f"Mais barato sair: <b>{sem[0][0]}</b> · mais caro: {sem[-1][0]}")
+    base = len("\n".join(L)) + len("\n".join(det))
+    calendario = I.texto_calor(cal)
+    if base + len(calendario) < 3700:
+        det += ["", "<b>Calendário</b>", calendario]
+    L += ["", "<blockquote expandable>" + "\n".join(det) + "</blockquote>"]
+    comp = " · ".join(_link(u, t) for t, u in I.links_comparar(r["origem"], r["destino"], m["dia"], r["noites"], r["adultos"]))
+    L += [f"<i>Comparar: {comp} · preços com taxas, confira antes de pagar</i>"]
+    botoes = [[(f"🔎 Abrir {_dia(m['dia'])} no Google Voos", m["url"])]]
+    return "\n".join(L), botoes
+
+
 def enviar_telegram(avisar: list[tuple[dict, list[str]]]) -> None:
-    """Um relatório-imagem por rota, igual ao do e-mail. Se não der para desenhar, manda em texto."""
+    """Uma mensagem por rota: texto organizado com links (padrão) ou imagem (avisos.formato_telegram: imagem)."""
     for res, motivos in avisar:
+        som = I.forte(motivos, res.get("veredito"))
+        silencioso = not som or (avisos.hora_silenciosa() and not (res.get("veredito") or {}).get("nivel") == "promo")
+        if CFG_AV.get("formato_telegram", "texto") != "imagem":
+            try:
+                texto, botoes = mensagem_bonita(res, motivos)
+                avisos.mensagem(texto, botoes, silencioso=silencioso)
+                print("Telegram: mensagem enviada."); continue
+            except Exception as e:
+                print(f"mensagem bonita falhou ({e}); tentando imagem")
         try:
             _, html, _ = montar([(res, motivos)])
             legenda, botoes = legenda_e_botoes(res, motivos)
-            som = I.forte(motivos, res.get("veredito"))
-            silencioso = not som or (avisos.hora_silenciosa() and not (res.get("veredito") or {}).get("nivel") == "promo")
             print(avisos.telegram_foto(avisos.html_para_png(html), legenda, botoes, silencioso=silencioso))
         except Exception as e:
             print(f"imagem falhou ({e}); mandando em texto")
