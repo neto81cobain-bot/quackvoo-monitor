@@ -439,6 +439,14 @@ export default {
       return url.searchParams.has("json") ? new Response(JSON.stringify(s, null, 1), { headers: { "Content-Type": "application/json; charset=utf-8" } })
                                           : txt(textoBarcos(x.o, x.d, ini, s, (await env.QV.get("cfg", "json")) || {}).replace(/<[^>]+>/g, ""));
     }
+    if (req.method === "GET" && url.pathname === "/espiar") {  // TEMP: olhar dados públicos crus
+      const q = url.searchParams.get("q") || "";
+      let r;
+      if (q.startsWith("nav:")) r = await fetch(NAV + q.slice(4), { headers: UA });
+      else if (q.startsWith("yj:")) r = await fetch(YJ_API + q.slice(3), { headers: { ...UA, "X-API-KEY": await chaveYjara(env) } });
+      else return txt("q=nav:/... ou yj:/...", 400);
+      return txt((await r.text()).slice(0, 6000));
+    }
     if (req.method !== "POST" || url.pathname !== "/telegram") return txt("QuackVoo 🦆 no ar.");
 
     const u = await req.json().catch(() => ({}));
