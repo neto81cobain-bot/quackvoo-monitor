@@ -4,16 +4,13 @@ h = requests.get("https://yjaraviagens.com/", headers=UA, timeout=30).text
 main = re.search(r'src="(/assets/main-[^"]+\.js)"', h).group(1)
 js = requests.get("https://yjaraviagens.com" + main, headers=UA, timeout=40).text
 chave = re.search(r'getAppApiToken\(\)\{return"([^"]+)"', js).group(1)
-rotas = re.findall(r'"?([\w.-]+)"?:\((?:\w+(?:=\{\})?,?)*\)=>api\.(get|post)\(`?["\']?([^"\'`,)]+)', js)
-print("API:", [(n, m, p) for n, m, p in rotas if m == "get"][:80])
-i = js.find("escolher-passagem"); print("ROTA escolher:", js[i-100:i+400])
-# testa algumas chamadas
+ct = re.search(r'import\("\./(ChooseTrip-[^"]+\.js)"\)', js).group(1)
+c = requests.get("https://yjaraviagens.com/assets/" + ct, headers=UA, timeout=40).text
+for m in list(re.finditer(r"trechos-viagem", c))[:3]:
+    print("CHAMADA:", c[max(0, m.start()-600): m.start()+300])
 API = "https://app.techrios.online/api"
-H = {**UA, "X-API-KEY": chave, "Accept": "application/json", "Origin": "https://yjaraviagens.com", "Referer": "https://yjaraviagens.com/"}
-for path, params in [("/municipios", {"subdomain": "yjaraviagens"}), ("/municipios", {}), ("/viagens-em-destaque", {}),
-                     ("/trechos-viagem", {"subdomain": "yjaraviagens"})]:
-    try:
-        r = requests.get(API + path, params=params, headers=H, timeout=30)
-        print("GET", path, params, r.status_code, r.text[:500].replace("\n", " "))
-    except Exception as e:
-        print("ERRO", path, e)
+H = {**UA, "X-API-KEY": chave, "Accept": "application/json"}
+r = requests.get(API + "/trechos-viagem", params={"subdomain": "yjaraviagens"}, headers=H, timeout=30).json()
+t = r["data"]["trechos"]
+print("PAGINAÇÃO:", {k: t.get(k) for k in ("current_page", "last_page", "per_page", "total")}, "| outras chaves:", list(r["data"].keys()))
+print("ITEM:", json.dumps(t["data"][0], ensure_ascii=False)[:1500])
