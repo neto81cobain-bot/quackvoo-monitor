@@ -137,7 +137,7 @@ def decidir(res: dict, r: dict, h: dict, dia_resumo: bool) -> list[str]:
         motivos.append("Resumo semanal")
     if FORCAR and not motivos:
         motivos.append("Execução manual")
-    if CFG_AV.get("relatorio_toda_busca", True) and not motivos:
+    if CFG_AV.get("relatorio_toda_busca", False) and not motivos:
         motivos.append("Relatório da busca (sem queda desde a última)")
     return motivos
 

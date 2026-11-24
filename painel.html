@@ -289,7 +289,7 @@ function preencherAvisos(){
   $("economia").value = av.economia_minima_conexao ?? 150;
   $("tg").checked = (av.telegram ?? av.whatsapp) !== false;
   $("mail").checked = !!av.email;
-  $("todas").checked = av.relatorio_toda_busca !== false;
+  $("todas").checked = av.relatorio_toda_busca === true;
   const hs = cronsDoWorkflow(); $("h1").value = hs[0]||""; $("h2").value = hs[1]||"";
   ["resumo","conexoesToda","economia","tg","mail","todas","h1","h2"].forEach(id => $(id).onchange = atualizarRodape);
 }
