@@ -445,6 +445,15 @@ export default {
       return url.searchParams.has("json") ? new Response(JSON.stringify(s, null, 1), { headers: { "Content-Type": "application/json; charset=utf-8" } })
                                           : txt(textoBarcos(x.o, x.d, ini, s, (await env.QV.get("cfg", "json")) || {}).replace(/<[^>]+>/g, ""));
     }
+    if (req.method === "GET" && url.pathname === "/simular") {  // teste de ponta a ponta (chave só no cofre)
+      const k = await env.QV.get("sim_token");
+      if (!k || url.searchParams.get("k") !== k) return txt("não", 403);
+      const cfg = await env.QV.get("cfg", "json");
+      const t = url.searchParams.get("t") || "/menu", cq = url.searchParams.get("cq");
+      const u = cq ? { callback_query: { id: "0", data: cq, message: { chat: { id: cfg.chat }, message_id: +(url.searchParams.get("mid") || 0) } } }
+                   : { message: { chat: { id: cfg.chat }, text: t } };
+      try { await tratar(env, u, cfg); return txt("ok"); } catch (e) { return txt("erro: " + (e.stack || e), 500); }
+    }
     if (req.method !== "POST" || url.pathname !== "/telegram") return txt("QuackVoo 🦆 no ar.");
 
     const u = await req.json().catch(() => ({}));
