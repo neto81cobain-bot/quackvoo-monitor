@@ -35,9 +35,9 @@ rotas:
     conexao_dias:
       - 0
       - 1
-  - nome: Santarém → MON
+  - nome: Santarém → Montreal
     origem: STM
-    destino: MON
+    destino: YUL
     ida_entre:
       - '2027-06-01'
       - '2027-06-30'
