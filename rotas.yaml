@@ -4,24 +4,43 @@ avisos:
   conexoes_toda: segunda
   email: false
   telegram: true
+  relatorio_toda_busca: false
+  checagem_rapida: true
+  rapida_horas: 2
+  promos: true
+  radar: true
+  radar_origens:
+    - MAO
+    - BEL
+    - STM
+    - TMT
 rotas:
-- nome: Manaus -> Santa Cruz (Inverno)
-  origem: MAO
-  destino: VVI
-  ida_entre:
-  - '2027-05-25'
-  - '2027-09-05'
-  noites: 0
-  adultos: 1
-  preco_alvo: 1050
-  queda_minima: 5
-  conexoes:
-  - GRU
-  - VCP
-  - BSB
-  - CGB
-  - CGH
-  - STM
-  conexao_dias:
-  - 0
-  - 1
+  - nome: Manaus -> Santa Cruz (Inverno)
+    origem: MAO
+    destino: VVI
+    ida_entre:
+      - '2027-05-25'
+      - '2027-09-05'
+    noites: 0
+    adultos: 1
+    preco_alvo: 1050
+    queda_minima: 5
+    conexoes:
+      - GRU
+      - VCP
+      - BSB
+      - CGB
+      - CGH
+      - STM
+    conexao_dias:
+      - 0
+      - 1
+  - nome: Santarém → MON
+    origem: STM
+    destino: MON
+    ida_entre:
+      - '2027-06-01'
+      - '2027-06-30'
+    noites: 0
+    adultos: 1
+    queda_minima: 5
