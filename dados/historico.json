@@ -187,6 +187,11 @@
     "t": "2026-11-25",
     "melhor": 1167,
     "dia": "2027-05-29"
+   },
+   {
+    "t": "2026-11-25",
+    "melhor": 1167,
+    "dia": "2027-05-29"
    }
   ],
   "assinatura": "MAO>VVI|n0|a1",
@@ -198,24 +203,24 @@
   "avisou_alvo": false,
   "conexao": {
    "hub": "GRU",
-   "dia": "2027-05-30",
-   "total": 1258,
+   "dia": "2027-05-25",
+   "total": 1248,
    "ida": {
-    "total": 1258,
+    "total": 1248,
     "p1": {
      "preco": 640,
-     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20MAO%20to%20GRU%20on%202027-05-30%20one%20way"
+     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20MAO%20to%20GRU%20on%202027-05-25%20one%20way"
     },
     "p2": {
-     "preco": 618,
-     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20GRU%20to%20VVI%20on%202027-05-31%20one%20way"
+     "preco": 608,
+     "url": "https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q=Flights%20from%20GRU%20to%20VVI%20on%202027-05-25%20one%20way"
     },
-    "data2": "2027-05-31"
+    "data2": "2027-05-25"
    },
    "volta": null,
-   "economia": -71,
-   "vs_mesmo_dia": 1187,
-   "testado_em": "2026-11-24"
+   "economia": -81,
+   "vs_mesmo_dia": 1776,
+   "testado_em": "2026-11-25"
   },
   "ultimo_cal": {
    "2027-05-25": 1776,
@@ -323,26 +328,32 @@
    "2027-09-04": 1167,
    "2027-09-05": 1776
   },
-  "ultima_iso": "2026-11-25T22:27:44+00:00",
-  "promo_avisada": 1187
+  "ultima_iso": "2026-11-25T23:55:39+00:00",
+  "promo_avisada": 1167
  },
  "_meta": {
-  "ultima": "2026-11-25T22:27:44+00:00",
-  "custo_dias": 104,
-  "erros": []
+  "ultima": "2026-11-25T23:55:45+00:00",
+  "custo_dias": 763,
+  "erros": [
+   "Santarém → MON: O Google não mostrou preços pra essa rota/janela."
+  ]
  },
  "_fli": {
-  "MAO>GRU": 0.82,
-  "GRU>VVI": 0.81,
-  "MAO>VCP": 0.82,
+  "MAO>GRU": 0.88,
+  "GRU>VVI": 0.95,
+  "MAO>VCP": 0.97,
   "VCP>VVI": 0.0,
-  "MAO>BSB": 1.0,
+  "MAO>BSB": 0.98,
   "BSB>VVI": 0.0,
   "MAO>CGB": 0.14,
   "CGB>VVI": 0.0,
   "MAO>CGH": 1.0,
   "CGH>VVI": 0.0,
-  "MAO>STM": 0.99,
+  "MAO>STM": 1.0,
   "STM>VVI": 0.0
+ },
+ "Santarém → MON": {
+  "execucoes": [],
+  "assinatura": "STM>MON|n0|a1"
  }
 }
