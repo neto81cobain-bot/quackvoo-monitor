@@ -357,11 +357,11 @@
   "promo_avisada": 1095
  },
  "_meta": {
-  "ultima": "2026-11-27T13:47:44+00:00",
-  "custo_dias": 0,
+  "ultima": "2026-11-27T21:38:34+00:00",
+  "custo_dias": 134,
   "erros": [
-   "Manaus -> Santa Cruz (Inverno): Fli falhou: Priced 0 of 14 dates — 13 of the 14 dates tried failed to load, so \"no flights\" cannot be concluded from the 1 that did. Reasons: the search page carried no ds:",
-   "Santarém → Montreal: Fli falhou: Priced 0 of 30 dates — every date in the range failed. Reasons: the search page carried no ds:1 payload — Google may have changed the page shape, or served a co"
+   "Manaus -> Santa Cruz (Inverno): O Google não mostrou preços pra essa rota/janela.",
+   "Santarém → Montreal: O Google não mostrou preços pra essa rota/janela."
   ]
  },
  "_fli": {
