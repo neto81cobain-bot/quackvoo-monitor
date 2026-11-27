@@ -357,11 +357,11 @@
   "promo_avisada": 1095
  },
  "_meta": {
-  "ultima": "2026-11-27T03:38:57+00:00",
+  "ultima": "2026-11-27T03:49:33+00:00",
   "custo_dias": 0,
   "erros": [
-   "Manaus -> Santa Cruz (Inverno): Fli falhou: Priced 0 of 14 dates — every date in the range failed. Reasons: the search page carried no ds:1 payload — Google may have changed the page shape, or served a co",
-   "Santarém → Montreal: Fli falhou: Priced 0 of 30 dates — 22 of the 30 dates tried failed to load, so \"no flights\" cannot be concluded from the 8 that did. Reasons: the search page carried no ds:"
+   "Manaus -> Santa Cruz (Inverno): Fli falhou: Priced 0 of 14 dates — 11 of the 14 dates tried failed to load, so \"no flights\" cannot be concluded from the 3 that did. Reasons: the search page carried no ds:",
+   "Santarém → Montreal: Fli falhou: Priced 0 of 30 dates — every date in the range failed. Reasons: the search page carried no ds:1 payload — Google may have changed the page shape, or served a co"
   ]
  },
  "_fli": {
